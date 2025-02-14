@@ -6,6 +6,8 @@ Sample Exporter wich uses the TiaFileFormat DLL
 This Project is mostly a Demo on how to use the Library. But it also can be used to export many parts of a TIA Project to different Files.
 But you can also use the C# objects directly.
 
+The tool should work on every OS where dotnet is supported.
+
 # How to use
 
 dotnet TiaFileFormatExporter.dll "TiaProject.ap20" --plcblock --out "d:\export"
