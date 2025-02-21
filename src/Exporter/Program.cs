@@ -6,6 +6,7 @@ using TiaFileFormat.Database;
 using TiaFileFormat.Database.StorageTypes;
 using TiaFileFormat.Wrappers;
 using TiaFileFormat.Wrappers.CodeBlock;
+using TiaFileFormat.Wrappers.CodeBlock.Converter;
 using TiaFileFormat.Wrappers.Controller.Tags;
 using TiaFileFormat.Wrappers.Controller.WatchTable;
 using TiaFileFormat.Wrappers.Hmi.Tags;
@@ -214,11 +215,22 @@ public class Program
                                     File.WriteAllText(file1, winCCScript.Script);
                                     break;
                                 }
-                            case CodeBlockWrapper codeBlockWrapper:
+                            case CodeBlock codeBlock:
                                 {
                                     Directory.CreateDirectory(dir);
                                     var file1 = Path.Combine(dir, sb.Name + ".xml");
-                                    File.WriteAllText(file1, codeBlockWrapper.AsXml());
+                                    File.WriteAllText(file1, codeBlock.ToAutomationXml());
+                                    if (codeBlock.BlockLang== BlockLang.SCL)
+                                    {
+                                        var file2 = Path.Combine(dir, sb.Name + ".scl");
+                                        File.WriteAllText(file2, string.Join("", codeBlock.ToCode()));
+                                    }
+                                    else if (codeBlock.BlockLang == BlockLang.STL)
+                                    {
+                                        var file2 = Path.Combine(dir, sb.Name + ".awl");
+                                        var networsWithCode = codeBlock.Networks.Zip(codeBlock.ToCode());
+                                        File.WriteAllText(file2, string.Join("", networsWithCode.Select(x => "#### Network - " + x.First.Title + "\n\n" + x.Second + "\n\n")));
+                                    }
                                     break;
                                 }
                         }
