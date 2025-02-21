@@ -1,6 +1,8 @@
 ﻿using CommandLine;
+using ImageMagick;
 using Siemens.Simatic.Hmi.Utah.Globalization;
 using System.Diagnostics;
+using System.Text;
 using TiaFileFormat;
 using TiaFileFormat.Database;
 using TiaFileFormat.Database.StorageTypes;
@@ -17,6 +19,7 @@ using TiaFileFormatExporter;
 using TiaFileFormatExporter.Classes;
 using TiaFileFormatExporter.Classes.Converters;
 using TiaFileFormatExporter.Classes.Helper;
+using static System.Runtime.InteropServices.JavaScript.JSType;
 
 public class Program
 {
@@ -46,11 +49,14 @@ public class Program
         var files = parsedArgs.Value.FileNames;
         outDir = parsedArgs.Value.OutDir;
 
-        var sw = new Stopwatch();
-        sw.Start();
-
         foreach (var f in files)
         {
+            runningTasks = 0;
+            exportedCount = 0;
+
+            var sw = new Stopwatch();
+            sw.Start();
+
             var file = f;
             if (OperatingSystem.IsWindows() && file.StartsWith("/"))
                 file = file.Substring(1);
@@ -127,24 +133,35 @@ public class Program
                     if (highLevelObject != null)
                     {
                         exportedCount++;
-                        var dir = Path.Combine(outDir, path);
+                        var dir = Path.Combine(outDir, path).FixPath();
 
                         switch (highLevelObject)
                         {
                             case Image image:
                                 {
                                     Directory.CreateDirectory(dir);
-                                    var file = Path.Combine(dir, image.Name + "." + image.ImageType.ToString().ToLowerInvariant());
+                                    var file = Path.Combine(dir, image.Name.FixFileName() + "." + image.ImageType.ToString().ToLowerInvariant());
                                     File.WriteAllBytes(file, image.Data);
+                                    if (parsedOptions.ConvertMetafilesToSvg && (image.ImageType == ImageType.EMF || image.ImageType == ImageType.WMF))
+                                    {
+                                        using var ms = new MemoryStream();
+                                        using var magickImage = new MagickImage(image.Data);
+                                        magickImage.Write(ms, MagickFormat.Svg);
+                                        ms.Position = 0;
+                                        using var sr = new StreamReader(ms);
+                                        var text = sr.ReadToEnd();
+                                        var file2 = Path.Combine(dir, image.Name.FixFileName() + ".svg");
+                                        File.WriteAllText(file2, text);
+                                    }
                                     break;
                                 }
                             case PlcTagTable plcTagTable:
                                 {
                                     Directory.CreateDirectory(dir);
-                                    var file1 = Path.Combine(dir, plcTagTable.Name + "_Tags.csv");
+                                    var file1 = Path.Combine(dir, plcTagTable.Name.FixFileName() + "_Tags.csv");
                                     var csv1 = CsvSerializer.ToCsv(plcTagTable.Tags);
                                     File.WriteAllText(file1, csv1);
-                                    var file2 = Path.Combine(dir, plcTagTable.Name + "_Constants.csv");
+                                    var file2 = Path.Combine(dir, plcTagTable.Name.FixFileName() + "_Constants.csv");
                                     var csv2 = CsvSerializer.ToCsv(plcTagTable.UserConstants);
                                     File.WriteAllText(file2, csv2);
                                     break;
@@ -152,7 +169,7 @@ public class Program
                             case HmiTagTable hmiTagTable:
                                 {
                                     Directory.CreateDirectory(dir);
-                                    var file = Path.Combine(dir, hmiTagTable.Name + ".csv");
+                                    var file = Path.Combine(dir, hmiTagTable.Name.FixFileName() + ".csv");
                                     var csv = CsvSerializer.ToCsv(hmiTagTable.Tags);
                                     File.WriteAllText(file, csv);
                                     break;
@@ -160,7 +177,7 @@ public class Program
                             case WatchTable watchTable:
                                 {
                                     Directory.CreateDirectory(dir);
-                                    var file = Path.Combine(dir, watchTable.Name + ".csv");
+                                    var file = Path.Combine(dir, watchTable.Name.FixFileName() + ".csv");
                                     var csv = CsvSerializer.ToCsv(watchTable.Items);
                                     File.WriteAllText(file, csv);
                                     break;
@@ -168,13 +185,13 @@ public class Program
                             case WinCCUnifiedScreen winCCUnifiedScreen:
                                 {
                                     Directory.CreateDirectory(dir);
-                                    var file1 = Path.Combine(dir, sb.Name + ".html");
+                                    var file1 = Path.Combine(dir, sb.Name.FixFileName() + ".html");
                                     File.WriteAllText(file1, winCCUnifiedScreen.Html);
-                                    var file2 = Path.Combine(dir, sb.Name + ".js");
+                                    var file2 = Path.Combine(dir, sb.Name.FixFileName() + ".js");
                                     File.WriteAllText(file2, winCCUnifiedScreen.GetScriptString());
                                     if (parsedOptions.Snapshot)
                                     {
-                                        var file3 = Path.Combine(dir, sb.Name + ".png");
+                                        var file3 = Path.Combine(dir, sb.Name.FixFileName() + ".png");
                                         await maxBrowserTasks.WaitAsync();
                                         try
                                         {
@@ -190,13 +207,13 @@ public class Program
                             case WinCCScreen winCCScreen:
                                 {
                                     Directory.CreateDirectory(dir);
-                                    var file1 = Path.Combine(dir, sb.Name + ".html");
+                                    var file1 = Path.Combine(dir, sb.Name.FixFileName() + ".html");
                                     File.WriteAllText(file1, winCCScreen.Html);
-                                    var file2 = Path.Combine(dir, sb.Name + ".vb");
+                                    var file2 = Path.Combine(dir, sb.Name.FixFileName() + ".vb");
                                     File.WriteAllText(file2, winCCScreen.GetScriptString());
                                     if (parsedOptions.Snapshot)
                                     {
-                                        var file3 = Path.Combine(dir, sb.Name + ".png");
+                                        var file3 = Path.Combine(dir, sb.Name.FixFileName() + ".png");
                                         await maxBrowserTasks.WaitAsync();
                                         try
                                         {
@@ -212,7 +229,7 @@ public class Program
                             case WinCCScript winCCScript:
                                 {
                                     Directory.CreateDirectory(dir);
-                                    var file1 = Path.Combine(dir, sb.Name + (winCCScript.ScriptType switch
+                                    var file1 = Path.Combine(dir, sb.Name.FixFileName() + (winCCScript.ScriptType switch
                                     {
                                         TiaFileFormat.Wrappers.Hmi.ScriptType.VB => ".vb",
                                         TiaFileFormat.Wrappers.Hmi.ScriptType.Javascript => ".js",
@@ -225,16 +242,16 @@ public class Program
                             case CodeBlock codeBlock:
                                 {
                                     Directory.CreateDirectory(dir);
-                                    var file1 = Path.Combine(dir, sb.Name + ".xml");
+                                    var file1 = Path.Combine(dir, sb.Name.FixFileName() + ".xml");
                                     File.WriteAllText(file1, codeBlock.ToAutomationXml());
                                     if (codeBlock.BlockLang== BlockLang.SCL)
                                     {
-                                        var file2 = Path.Combine(dir, sb.Name + ".scl");
+                                        var file2 = Path.Combine(dir, sb.Name.FixFileName() + ".scl");
                                         File.WriteAllText(file2, string.Join("", codeBlock.ToCode()));
                                     }
                                     else if (codeBlock.BlockLang == BlockLang.STL)
                                     {
-                                        var file2 = Path.Combine(dir, sb.Name + ".awl");
+                                        var file2 = Path.Combine(dir, sb.Name.FixFileName() + ".awl");
                                         var networsWithCode = codeBlock.Networks.Zip(codeBlock.ToCode(Mnemonic.German));
                                         File.WriteAllText(file2, string.Join("", networsWithCode.Select(x => "#### Network - " + x.First.Title + "\n\n" + x.Second + "\n\n")));
                                     }
@@ -252,7 +269,7 @@ public class Program
                 lock (exportTasks)
                 {
                     Console.SetCursorPosition(2, 2);
-                    Console.Write("file: " + currentFile);
+                    Console.Write("file: " + currentFile + "           ");
                     Console.SetCursorPosition(2, 3);
                     Console.Write("export tasks: " + runningTasks + " todo from " + exportTasks.Count + "            ");
                     Console.SetCursorPosition(5, 4);

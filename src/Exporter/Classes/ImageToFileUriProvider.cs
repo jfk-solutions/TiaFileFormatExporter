@@ -8,16 +8,16 @@ namespace TiaFileFormatExporter.Classes
     {
         public string GetImageUrl(StorageBusinessObject storageObject)
         {
-            var url = "../../../";
+            var url = "../../../../";
             var parent = storageObject;
-            while(parent!=null)
+            while(parent != null)
             {
                 url += "../";
                 parent = parent.Parent;
             }
             var att = storageObject.GetChild<HmiInternalImageAttributes>();
 
-            return url + "Images/" + storageObject.ProcessedName + att.FileExtension;
+            return url + "Images/" + storageObject.ProcessedName.FixFileName() + att.FileExtension;
         }
     }
 }

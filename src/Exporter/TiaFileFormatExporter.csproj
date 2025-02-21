@@ -11,6 +11,8 @@
   <ItemGroup>
     <PackageReference Include="CommandLineParser" Version="2.9.1" />
     <PackageReference Include="CsvHelper" Version="33.0.1" />
+    <PackageReference Include="Magick.NET-Q16-AnyCPU" Version="14.4.0" />
+    <PackageReference Include="Magick.NET.Core" Version="14.4.0" />
     <PackageReference Include="RtfDomParser" Version="7.0.0" />
     <PackageReference Include="BouncyCastle.Cryptography" Version="2.5.1" />
     <PackageReference Include="SharpCompress" Version="0.39.0" />

@@ -16,6 +16,9 @@ namespace TiaFileFormatExporter
         [Option("images", HelpText = "Enable Images export.")]
         public bool Image { get; set; }
 
+        [Option("convertmetafiles", HelpText = "Convert Metafiles (*.wmf, *.emf) to SVG.")]
+        public bool ConvertMetafilesToSvg { get; set; }
+
         [Option("hmitagtable", HelpText = "Enable HmiTagTable export.")]
         public bool HmiTagTable { get; set; }
 
