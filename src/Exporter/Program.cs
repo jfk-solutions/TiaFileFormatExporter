@@ -27,6 +27,7 @@ public class Program
     static int exceptionCount;
     static int exportedCount;
     static string outDir;
+    static string currentFile;
     static Options parsedOptions;
     static SemaphoreSlim maxBrowserTasks;
 
@@ -42,50 +43,56 @@ public class Program
 
         exportTasks = new List<Task>();
 
-        var file = parsedArgs.Value.FileName;
+        var files = parsedArgs.Value.FileNames;
         outDir = parsedArgs.Value.OutDir;
 
         var sw = new Stopwatch();
         sw.Start();
 
-        if (OperatingSystem.IsWindows() && file.StartsWith("/"))
-            file = file.Substring(1);
-        var tfp = TiaFileProvider.CreateFromSingleFile(file);
-        var database = TiaDatabaseFile.Load(tfp);
-
-        //database.ParseAllObjects();
-
-        if (parsedOptions.Image)
+        foreach (var f in files)
         {
-            var imgs = database.FindStorageBusinessObjectsWithChildType<HmiInternalImageAttributes>();
-            var duplicateNames = new HashSet<string>();
+            var file = f;
+            if (OperatingSystem.IsWindows() && file.StartsWith("/"))
+                file = file.Substring(1);
+            currentFile = file;
 
-            var imageTasks = new List<Task>();
-            foreach (var i in imgs)
+            var tfp = TiaFileProvider.CreateFromSingleFile(file);
+            var database = TiaDatabaseFile.Load(tfp);
+
+            //database.ParseAllObjects();
+
+            if (parsedOptions.Image)
             {
-                //TODO: handle duplicated image names in some way
-                if (!duplicateNames.Contains(i.ProcessedName))
+                var imgs = database.FindStorageBusinessObjectsWithChildType<HmiInternalImageAttributes>();
+                var duplicateNames = new HashSet<string>();
+
+                var imageTasks = new List<Task>();
+                foreach (var i in imgs)
                 {
-                    duplicateNames.Add(i.ProcessedName);
-                    imageTasks.Add(ExportObject(i, "Images")!);
+                    //TODO: handle duplicated image names in some way
+                    if (!duplicateNames.Contains(i.ProcessedName))
+                    {
+                        duplicateNames.Add(i.ProcessedName);
+                        imageTasks.Add(ExportObject(i, "Images")!);
+                    }
+                }
+                if (parsedOptions.Snapshot)
+                {
+                    await Task.WhenAll(imageTasks);
                 }
             }
-            if (parsedOptions.Snapshot)
-            {
-                await Task.WhenAll(imageTasks);
-            }
+
+            if (database.RootObject.StoreObjectIds.TryGetValue("Project", out var prj))
+                WalkProject((StorageBusinessObject)prj.StorageObject, "Project");
+            if (database.RootObject.StoreObjectIds.TryGetValue("Library", out var lb))
+                WalkProject((StorageBusinessObject)lb.StorageObject, "Library");
+
+            await Task.WhenAll(exportTasks);
+
+            sw.Stop();
+            Console.WriteLine();
+            Console.WriteLine("Export took: " + sw.ToString());
         }
-
-        if (database.RootObject.StoreObjectIds.TryGetValue("Project", out var prj))
-            WalkProject((StorageBusinessObject)prj.StorageObject, "Project");
-        if (database.RootObject.StoreObjectIds.TryGetValue("Library", out var lb))
-            WalkProject((StorageBusinessObject)lb.StorageObject, "Library");
-
-        await Task.WhenAll(exportTasks);
-
-        sw.Stop();
-        Console.WriteLine();
-        Console.WriteLine("Export took: " + sw.ToString());
     }
 
     private static void WalkProject(StorageBusinessObject sb, string path)
@@ -228,7 +235,7 @@ public class Program
                                     else if (codeBlock.BlockLang == BlockLang.STL)
                                     {
                                         var file2 = Path.Combine(dir, sb.Name + ".awl");
-                                        var networsWithCode = codeBlock.Networks.Zip(codeBlock.ToCode());
+                                        var networsWithCode = codeBlock.Networks.Zip(codeBlock.ToCode(Mnemonic.German));
                                         File.WriteAllText(file2, string.Join("", networsWithCode.Select(x => "#### Network - " + x.First.Title + "\n\n" + x.Second + "\n\n")));
                                     }
                                     break;
@@ -245,10 +252,12 @@ public class Program
                 lock (exportTasks)
                 {
                     Console.SetCursorPosition(2, 2);
+                    Console.Write("file: " + currentFile);
+                    Console.SetCursorPosition(2, 3);
                     Console.Write("export tasks: " + runningTasks + " todo from " + exportTasks.Count + "            ");
-                    Console.SetCursorPosition(5, 3);
-                    Console.Write("exported: " + exportedCount);
                     Console.SetCursorPosition(5, 4);
+                    Console.Write("exported: " + exportedCount);
+                    Console.SetCursorPosition(5, 5);
                     Console.Write("exceptions: " + exceptionCount);
                 }
             });

@@ -2,7 +2,7 @@
   "profiles": {
     "TiaFileFormatExporter": {
       "commandName": "Project",
-      "commandLineArgs": "\"D:\\tia\\Reuter_V17_V20_1\\Reuter_V17_V20_1.ap20\" --plcblock --out \"d:\\export\""
+      "commandLineArgs": "--plcblock --out \"d:\\export\" \"D:\\tia\\aa\\aa.ap20\" \"D:\\tia\\bb\\bb.ap20\""
     }
   }
 }

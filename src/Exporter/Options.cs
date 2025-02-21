@@ -37,7 +37,7 @@ namespace TiaFileFormatExporter
         [Option('o', "out", HelpText = "OutDir", Required = true)]
         public string? OutDir { get; set; }
 
-        [Value(0, MetaName = "input file", HelpText = "Input file to be processed.", Required = true)]
-        public string? FileName { get; set; }
+        [Value(0, MetaName = "input file", HelpText = "Input file to be processed.", Required = true, Min = 1)]
+        public IEnumerable<string>? FileNames { get; set; }
     }
 }
