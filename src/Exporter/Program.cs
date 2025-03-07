@@ -1,8 +1,8 @@
 ﻿using CommandLine;
 using ImageMagick;
 using Siemens.Simatic.Hmi.Utah.Globalization;
+using System.Collections.Concurrent;
 using System.Diagnostics;
-using System.Text;
 using System.Text.Json;
 using TiaFileFormat;
 using TiaFileFormat.Database;
@@ -20,7 +20,6 @@ using TiaFileFormatExporter;
 using TiaFileFormatExporter.Classes;
 using TiaFileFormatExporter.Classes.Converters;
 using TiaFileFormatExporter.Classes.Helper;
-using static System.Runtime.InteropServices.JavaScript.JSType;
 
 public class Program
 {
@@ -30,10 +29,13 @@ public class Program
     static int runningTasks;
     static int exceptionCount;
     static int exportedCount;
+    static int skippedCount;
     static string outDir;
     static string currentFile;
     static Options parsedOptions;
     static SemaphoreSlim maxBrowserTasks;
+    static ConcurrentDictionary<string, DateTime> fileModifiedTimeStamps = new ConcurrentDictionary<string, DateTime>();
+    static string fileNameModifiedTimeStamps;
 
     private async static Task Main(string[] args)
     {
@@ -50,10 +52,18 @@ public class Program
         var files = parsedArgs.Value.FileNames;
         outDir = parsedArgs.Value.OutDir;
 
+
+        fileNameModifiedTimeStamps = Path.Combine(outDir, "fileModifiedTimeStamps.json");
+        if (File.Exists(fileNameModifiedTimeStamps))
+        {
+            fileModifiedTimeStamps = JsonSerializer.Deserialize<ConcurrentDictionary<string, DateTime>>(File.ReadAllText(fileNameModifiedTimeStamps));
+        }
+
         foreach (var f in files)
         {
             runningTasks = 0;
             exportedCount = 0;
+            skippedCount = 0;
 
             var sw = new Stopwatch();
             sw.Start();
@@ -68,6 +78,8 @@ public class Program
 
             //database.ParseAllObjects();
 
+            var prjNm = Path.GetFileNameWithoutExtension(file);
+
             if (parsedOptions.Image)
             {
                 var imgs = database.FindStorageBusinessObjectsWithChildType<HmiInternalImageAttributes>();
@@ -80,7 +92,7 @@ public class Program
                     if (!duplicateNames.Contains(i.ProcessedName))
                     {
                         duplicateNames.Add(i.ProcessedName);
-                        imageTasks.Add(ExportObject(i, "Images")!);
+                        imageTasks.Add(ExportObject(i, prjNm + "/Images")!);
                     }
                 }
                 if (parsedOptions.Snapshot)
@@ -90,15 +102,17 @@ public class Program
             }
 
             if (database.RootObject.StoreObjectIds.TryGetValue("Project", out var prj))
-                WalkProject((StorageBusinessObject)prj.StorageObject, "Project");
+                WalkProject((StorageBusinessObject)prj.StorageObject, prjNm + "/Project");
             if (database.RootObject.StoreObjectIds.TryGetValue("Library", out var lb))
-                WalkProject((StorageBusinessObject)lb.StorageObject, "Library");
+                WalkProject((StorageBusinessObject)lb.StorageObject, prjNm + "/Library");
 
             await Task.WhenAll(exportTasks);
 
             sw.Stop();
             Console.WriteLine();
             Console.WriteLine("Export took: " + sw.ToString());
+
+            File.WriteAllText(fileNameModifiedTimeStamps, JsonSerializer.Serialize(fileModifiedTimeStamps, new JsonSerializerOptions() { WriteIndented = true }));
         }
     }
 
@@ -133,8 +147,22 @@ public class Program
                     var highLevelObject = highLevelObjectConverterWrapper.Convert(sb, convertOptions);
                     if (highLevelObject != null)
                     {
-                        exportedCount++;
+                      
                         var dir = Path.Combine(outDir, path).FixPath();
+
+                        var nm = Path.Combine(dir, highLevelObject.Name);
+                       
+                        if (highLevelObject.ModifiedTime != null)
+                        {
+                            if (fileModifiedTimeStamps.TryGetValue(nm, out var dt) && dt == highLevelObject.ModifiedTime)
+                            {
+                                skippedCount++;
+                                return;
+                            }
+                            fileModifiedTimeStamps[nm] = highLevelObject.ModifiedTime.Value;
+                        }
+
+                        exportedCount++;
 
                         switch (highLevelObject)
                         {
@@ -288,9 +316,11 @@ public class Program
                     Console.SetCursorPosition(2, 3);
                     Console.Write("export tasks: " + runningTasks + " todo from " + exportTasks.Count + "            ");
                     Console.SetCursorPosition(5, 4);
-                    Console.Write("exported: " + exportedCount);
+                    Console.Write("exported: " + exportedCount + "           ");
                     Console.SetCursorPosition(5, 5);
-                    Console.Write("exceptions: " + exceptionCount);
+                    Console.Write("skipped : " + skippedCount + "           ");
+                    Console.SetCursorPosition(5, 6);
+                    Console.Write("exceptions: " + exceptionCount + "           ");
                 }
             });
             lock (exportTasks)
