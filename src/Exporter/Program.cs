@@ -3,6 +3,7 @@ using ImageMagick;
 using Siemens.Simatic.Hmi.Utah.Globalization;
 using System.Diagnostics;
 using System.Text;
+using System.Text.Json;
 using TiaFileFormat;
 using TiaFileFormat.Database;
 using TiaFileFormat.Database.StorageTypes;
@@ -255,6 +256,20 @@ public class Program
                                         var networsWithCode = codeBlock.Networks.Zip(codeBlock.ToCode(Mnemonic.German));
                                         File.WriteAllText(file2, string.Join("", networsWithCode.Select(x => "#### Network - " + x.First.Title + "\n\n" + x.Second + "\n\n")));
                                     }
+                                    break;
+                                }
+                            case TiaFileFormat.Wrappers.TextLists.TextList textList:
+                                {
+                                    Directory.CreateDirectory(dir);
+                                    var file1 = Path.Combine(dir, sb.Name.FixFileName() + ".json");
+                                    File.WriteAllText(file1, JsonSerializer.Serialize(textList, new JsonSerializerOptions() { WriteIndented = true }));
+                                    break;
+                                }
+                            case TiaFileFormat.Wrappers.Controller.Alarms.AlarmList alarmList:
+                                {
+                                    Directory.CreateDirectory(dir);
+                                    var file1 = Path.Combine(dir, sb.Name.FixFileName() + ".json");
+                                    File.WriteAllText(file1, JsonSerializer.Serialize(alarmList, new JsonSerializerOptions() { WriteIndented = true }));
                                     break;
                                 }
                         }
