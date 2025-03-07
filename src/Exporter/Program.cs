@@ -88,7 +88,7 @@ public class Program
                 var imageTasks = new List<Task>();
                 foreach (var i in imgs)
                 {
-                    //TODO: handle duplicated image names in some way
+                    //TODO: maybe handle duplicated image names in some way!
                     if (!duplicateNames.Contains(i.ProcessedName))
                     {
                         duplicateNames.Add(i.ProcessedName);
@@ -136,6 +136,9 @@ public class Program
                 (highLevelObjectType == HighLevelObjectType.WinCCTagTable && !parsedOptions.WinCCTagTable && !parsedOptions.All) ||
                 (highLevelObjectType == HighLevelObjectType.WinCCScreen && !parsedOptions.Screens && !parsedOptions.All) ||
                 (highLevelObjectType == HighLevelObjectType.WinCCUnifiedScreen && !parsedOptions.Screens && !parsedOptions.All) ||
+                (highLevelObjectType == HighLevelObjectType.TextList && !parsedOptions.TextList && !parsedOptions.All) ||
+                (highLevelObjectType == HighLevelObjectType.AlarmList && !parsedOptions.AlarmList && !parsedOptions.All) ||
+
                 (highLevelObjectType == HighLevelObjectType.Image && !parsedOptions.Image && !parsedOptions.All))
                 return Task.CompletedTask;
 
@@ -147,7 +150,6 @@ public class Program
                     var highLevelObject = highLevelObjectConverterWrapper.Convert(sb, convertOptions);
                     if (highLevelObject != null)
                     {
-                      
                         var dir = Path.Combine(outDir, path).FixPath();
 
                         var nm = Path.Combine(dir, highLevelObject.Name);

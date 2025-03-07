@@ -34,6 +34,12 @@ namespace TiaFileFormatExporter
         [Option("screens", HelpText = "Enable Screens export.")]
         public bool Screens { get; set; }
 
+        [Option("textlist", HelpText = "Enable TextList export.")]
+        public bool TextList { get; set; }
+
+        [Option("alarmlist", HelpText = "Enable AlarmList export.")]
+        public bool AlarmList { get; set; }
+
         [Option("snapshot", HelpText = "Enable Screen Snapshot generation.")]
         public bool Snapshot { get; set; }
 
