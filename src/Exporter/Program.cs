@@ -138,7 +138,9 @@ public class Program
                 (highLevelObjectType == HighLevelObjectType.WinCCUnifiedScreen && !parsedOptions.Screens && !parsedOptions.All) ||
                 (highLevelObjectType == HighLevelObjectType.TextList && !parsedOptions.TextList && !parsedOptions.All) ||
                 (highLevelObjectType == HighLevelObjectType.AlarmList && !parsedOptions.AlarmList && !parsedOptions.All) ||
-
+                (highLevelObjectType == HighLevelObjectType.HmiAlarmList && !parsedOptions.HmiAlarmList && !parsedOptions.All) ||
+                (highLevelObjectType == HighLevelObjectType.User && !parsedOptions.User && !parsedOptions.All) ||
+                (highLevelObjectType == HighLevelObjectType.CfChart && !parsedOptions.Chart && !parsedOptions.All) ||
                 (highLevelObjectType == HighLevelObjectType.Image && !parsedOptions.Image && !parsedOptions.All))
                 return Task.CompletedTask;
 
@@ -300,6 +302,27 @@ public class Program
                                     Directory.CreateDirectory(dir);
                                     var file1 = Path.Combine(dir, sb.Name.FixFileName() + ".json");
                                     File.WriteAllText(file1, JsonSerializer.Serialize(alarmList, new JsonSerializerOptions() { WriteIndented = true }));
+                                    break;
+                                }
+                            case TiaFileFormat.Wrappers.Hmi.Alarms.AlarmList alarmList:
+                                {
+                                    Directory.CreateDirectory(dir);
+                                    var file1 = Path.Combine(dir, sb.Name.FixFileName() + ".json");
+                                    File.WriteAllText(file1, JsonSerializer.Serialize(alarmList, new JsonSerializerOptions() { WriteIndented = true }));
+                                    break;
+                                }
+                            case TiaFileFormat.Wrappers.CfCharts.CfChart cfChart:
+                                {
+                                    Directory.CreateDirectory(dir);
+                                    var file1 = Path.Combine(dir, sb.Name.FixFileName() + ".json");
+                                    File.WriteAllText(file1, JsonSerializer.Serialize(cfChart, new JsonSerializerOptions() { WriteIndented = true }));
+                                    break;
+                                }
+                            case TiaFileFormat.Wrappers.UserManagement.User user:
+                                {
+                                    Directory.CreateDirectory(dir);
+                                    var file1 = Path.Combine(dir, sb.Name.FixFileName() + ".json");
+                                    File.WriteAllText(file1, JsonSerializer.Serialize(user, new JsonSerializerOptions() { WriteIndented = true }));
                                     break;
                                 }
                         }

@@ -40,6 +40,15 @@ namespace TiaFileFormatExporter
         [Option("alarmlist", HelpText = "Enable AlarmList export.")]
         public bool AlarmList { get; set; }
 
+        [Option("hmialarmlist", HelpText = "Enable HmiAlarmList export.")]
+        public bool HmiAlarmList { get; set; }
+
+        [Option("user", HelpText = "Enable User export.")]
+        public bool User { get; set; }
+
+        [Option("chart", HelpText = "Enable CFC Chart export.")]
+        public bool Chart { get; set; }
+
         [Option("snapshot", HelpText = "Enable Screen Snapshot generation.")]
         public bool Snapshot { get; set; }
 
