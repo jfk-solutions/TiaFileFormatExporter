@@ -276,7 +276,8 @@ public class Program
                                 {
                                     Directory.CreateDirectory(dir);
                                     var file1 = Path.Combine(dir, sb.Name.FixFileName() + ".xml");
-                                    File.WriteAllText(file1, codeBlock.ToAutomationXml());
+                                    var xml = codeBlock.ToAutomationXml();
+                                    File.WriteAllText(file1, xml);
                                     if (codeBlock.BlockLang== BlockLang.SCL)
                                     {
                                         var file2 = Path.Combine(dir, sb.Name.FixFileName() + ".scl");
