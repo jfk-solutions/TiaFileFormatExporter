@@ -156,14 +156,14 @@ public class Program
 
                         var nm = Path.Combine(dir, highLevelObject.Name);
                        
-                        if (highLevelObject.ModifiedTime != null)
+                        if (highLevelObject.LastModified != null)
                         {
-                            if (fileModifiedTimeStamps.TryGetValue(nm, out var dt) && dt == highLevelObject.ModifiedTime)
+                            if (fileModifiedTimeStamps.TryGetValue(nm, out var dt) && dt == highLevelObject.LastModified)
                             {
                                 skippedCount++;
                                 return;
                             }
-                            fileModifiedTimeStamps[nm] = highLevelObject.ModifiedTime.Value;
+                            fileModifiedTimeStamps[nm] = highLevelObject.LastModified.Value;
                         }
 
                         exportedCount++;
@@ -281,13 +281,12 @@ public class Program
                                     if (codeBlock.BlockLang== BlockLang.SCL)
                                     {
                                         var file2 = Path.Combine(dir, sb.Name.FixFileName() + ".scl");
-                                        File.WriteAllText(file2, string.Join("", codeBlock.ToCode()));
+                                        File.WriteAllText(file2, string.Join("", codeBlock.ToSourceBlock()));
                                     }
                                     else if (codeBlock.BlockLang == BlockLang.STL)
                                     {
                                         var file2 = Path.Combine(dir, sb.Name.FixFileName() + ".awl");
-                                        var networsWithCode = codeBlock.Networks.Zip(codeBlock.ToCode(Mnemonic.German));
-                                        File.WriteAllText(file2, string.Join("", networsWithCode.Select(x => "#### Network - " + x.First.Title + "\n\n" + x.Second + "\n\n")));
+                                        File.WriteAllText(file2, string.Join("", codeBlock.ToSourceBlock()));
                                     }
                                     break;
                                 }
