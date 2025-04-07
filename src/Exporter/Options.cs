@@ -57,5 +57,11 @@ namespace TiaFileFormatExporter
 
         [Value(0, MetaName = "input file", HelpText = "Input file to be processed.", Required = true, Min = 1)]
         public IEnumerable<string>? FileNames { get; set; }
+
+        [Option("noprojectname", HelpText = "Do not add Project Name to Path.")]
+        public bool NoProjectName { get; set; }
+
+        [Option("replacepath", HelpText = "Replacements for path, seperated via |")]
+        public IEnumerable<string> ReplacePath { get; set; }
     }
 }

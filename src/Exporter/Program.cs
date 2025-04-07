@@ -1,8 +1,11 @@
-﻿using CommandLine;
+﻿using ClosedXML.Excel;
+using CommandLine;
 using ImageMagick;
 using Siemens.Simatic.Hmi.Utah.Globalization;
 using System.Collections.Concurrent;
 using System.Diagnostics;
+using System.Drawing.Drawing2D;
+using System.Globalization;
 using System.Text.Json;
 using TiaFileFormat;
 using TiaFileFormat.Database;
@@ -12,6 +15,7 @@ using TiaFileFormat.Wrappers.CodeBlock;
 using TiaFileFormat.Wrappers.CodeBlock.Converter;
 using TiaFileFormat.Wrappers.Controller.Tags;
 using TiaFileFormat.Wrappers.Controller.WatchTable;
+using TiaFileFormat.Wrappers.Converters.AutomationXml;
 using TiaFileFormat.Wrappers.Hmi.Tags;
 using TiaFileFormat.Wrappers.Hmi.WinCCAdvanced;
 using TiaFileFormat.Wrappers.Hmi.WinCCUnified;
@@ -36,6 +40,7 @@ public class Program
     static SemaphoreSlim maxBrowserTasks;
     static ConcurrentDictionary<string, DateTime> fileModifiedTimeStamps = new ConcurrentDictionary<string, DateTime>();
     static string fileNameModifiedTimeStamps;
+    static Dictionary<string, string> pathReplacements;
 
     private async static Task Main(string[] args)
     {
@@ -78,7 +83,12 @@ public class Program
 
             //database.ParseAllObjects();
 
-            var prjNm = Path.GetFileNameWithoutExtension(file);
+            var prjNm = Path.GetFileNameWithoutExtension(file) + "/";
+            if (parsedOptions.NoProjectName)
+                prjNm = "";
+
+            if (parsedOptions.ReplacePath != null)
+                pathReplacements = parsedOptions.ReplacePath.Select(x => x.Replace("\\", "/").Split("|")).ToDictionary(x => x[0], x => x[1]);
 
             if (parsedOptions.Image)
             {
@@ -92,7 +102,7 @@ public class Program
                     if (!duplicateNames.Contains(i.ProcessedName))
                     {
                         duplicateNames.Add(i.ProcessedName);
-                        imageTasks.Add(ExportObject(i, prjNm + "/Images")!);
+                        imageTasks.Add(ExportObject(i, prjNm + "Images")!);
                     }
                 }
                 if (parsedOptions.Snapshot)
@@ -102,9 +112,9 @@ public class Program
             }
 
             if (database.RootObject.StoreObjectIds.TryGetValue("Project", out var prj))
-                WalkProject((StorageBusinessObject)prj.StorageObject, prjNm + "/Project");
+                WalkProject((StorageBusinessObject)prj.StorageObject, prjNm + "Project");
             if (database.RootObject.StoreObjectIds.TryGetValue("Library", out var lb))
-                WalkProject((StorageBusinessObject)lb.StorageObject, prjNm + "/Library");
+                WalkProject((StorageBusinessObject)lb.StorageObject, prjNm + "Library");
 
             await Task.WhenAll(exportTasks);
 
@@ -168,12 +178,13 @@ public class Program
 
                         exportedCount++;
 
+                        Directory.CreateDirectory(FixPath(dir));
+
                         switch (highLevelObject)
                         {
                             case Image image:
                                 {
-                                    Directory.CreateDirectory(dir);
-                                    var file = Path.Combine(dir, image.Name.FixFileName() + "." + image.ImageType.ToString().ToLowerInvariant());
+                                    var file = FixPath(Path.Combine(dir, image.Name.FixFileName() + "." + image.ImageType.ToString().ToLowerInvariant()));
                                     File.WriteAllBytes(file, image.Data);
                                     if (parsedOptions.ConvertMetafilesToSvg && (image.ImageType == ImageType.EMF || image.ImageType == ImageType.WMF))
                                     {
@@ -183,48 +194,44 @@ public class Program
                                         ms.Position = 0;
                                         using var sr = new StreamReader(ms);
                                         var text = sr.ReadToEnd();
-                                        var file2 = Path.Combine(dir, image.Name.FixFileName() + ".svg");
+                                        var file2 = FixPath(Path.Combine(dir, image.Name.FixFileName() + ".svg"));
                                         File.WriteAllText(file2, text);
                                     }
                                     break;
                                 }
                             case PlcTagTable plcTagTable:
                                 {
-                                    Directory.CreateDirectory(dir);
-                                    var file1 = Path.Combine(dir, plcTagTable.Name.FixFileName() + "_Tags.csv");
+                                    var file1 = FixPath(Path.Combine(dir, plcTagTable.Name.FixFileName() + "_Tags.csv"));
                                     var csv1 = CsvSerializer.ToCsv(plcTagTable.Tags);
                                     File.WriteAllText(file1, csv1);
-                                    var file2 = Path.Combine(dir, plcTagTable.Name.FixFileName() + "_Constants.csv");
+                                    var file2 = FixPath(Path.Combine(dir, plcTagTable.Name.FixFileName() + "_Constants.csv"));
                                     var csv2 = CsvSerializer.ToCsv(plcTagTable.UserConstants);
                                     File.WriteAllText(file2, csv2);
                                     break;
                                 }
                             case HmiTagTable hmiTagTable:
                                 {
-                                    Directory.CreateDirectory(dir);
-                                    var file = Path.Combine(dir, hmiTagTable.Name.FixFileName() + ".csv");
+                                    var file = FixPath(Path.Combine(dir, hmiTagTable.Name.FixFileName() + ".csv"));
                                     var csv = CsvSerializer.ToCsv(hmiTagTable.Tags);
                                     File.WriteAllText(file, csv);
                                     break;
                                 }
                             case WatchTable watchTable:
                                 {
-                                    Directory.CreateDirectory(dir);
-                                    var file = Path.Combine(dir, watchTable.Name.FixFileName() + ".csv");
+                                    var file = FixPath(Path.Combine(dir, watchTable.Name.FixFileName() + ".csv"));
                                     var csv = CsvSerializer.ToCsv(watchTable.Items);
                                     File.WriteAllText(file, csv);
                                     break;
                                 }
                             case WinCCUnifiedScreen winCCUnifiedScreen:
                                 {
-                                    Directory.CreateDirectory(dir);
-                                    var file1 = Path.Combine(dir, sb.Name.FixFileName() + ".html");
+                                    var file1 = FixPath(Path.Combine(dir, sb.Name.FixFileName() + ".html"));
                                     File.WriteAllText(file1, winCCUnifiedScreen.Html);
-                                    var file2 = Path.Combine(dir, sb.Name.FixFileName() + ".js");
+                                    var file2 = FixPath(Path.Combine(dir, sb.Name.FixFileName() + ".js"));
                                     File.WriteAllText(file2, winCCUnifiedScreen.GetScriptString());
                                     if (parsedOptions.Snapshot)
                                     {
-                                        var file3 = Path.Combine(dir, sb.Name.FixFileName() + ".png");
+                                        var file3 = FixPath(Path.Combine(dir, sb.Name.FixFileName() + ".png"));
                                         await maxBrowserTasks.WaitAsync();
                                         try
                                         {
@@ -239,14 +246,13 @@ public class Program
                                 }
                             case WinCCScreen winCCScreen:
                                 {
-                                    Directory.CreateDirectory(dir);
-                                    var file1 = Path.Combine(dir, sb.Name.FixFileName() + ".html");
+                                    var file1 = FixPath(Path.Combine(dir, sb.Name.FixFileName() + ".html"));
                                     File.WriteAllText(file1, winCCScreen.Html);
-                                    var file2 = Path.Combine(dir, sb.Name.FixFileName() + ".vb");
+                                    var file2 = FixPath(Path.Combine(dir, sb.Name.FixFileName() + ".vb"));
                                     File.WriteAllText(file2, winCCScreen.GetScriptString());
                                     if (parsedOptions.Snapshot)
                                     {
-                                        var file3 = Path.Combine(dir, sb.Name.FixFileName() + ".png");
+                                        var file3 = FixPath(Path.Combine(dir, sb.Name.FixFileName() + ".png"));
                                         await maxBrowserTasks.WaitAsync();
                                         try
                                         {
@@ -257,71 +263,160 @@ public class Program
                                             maxBrowserTasks.Release();
                                         }
                                     }
+
+                                    //var file4 = Path.Combine(dir, sb.Name.FixFileName() + ".xml");
+                                    //var xml = winCCScreen.ToAutomationXml();
+                                    //File.WriteAllText(file4, xml);
                                     break;
                                 }
                             case WinCCScript winCCScript:
                                 {
-                                    Directory.CreateDirectory(dir);
-                                    var file1 = Path.Combine(dir, sb.Name.FixFileName() + (winCCScript.ScriptType switch
+                                    var file1 = FixPath(Path.Combine(dir, sb.Name.FixFileName() + (winCCScript.ScriptLang switch
                                     {
-                                        TiaFileFormat.Wrappers.Hmi.ScriptType.VB => ".vb",
-                                        TiaFileFormat.Wrappers.Hmi.ScriptType.Javascript => ".js",
-                                        TiaFileFormat.Wrappers.Hmi.ScriptType.C => ".c",
-                                        TiaFileFormat.Wrappers.Hmi.ScriptType.C_Header => ".h",
-                                    }));
+                                        TiaFileFormat.Wrappers.Hmi.ScriptLang.VB => ".vb",
+                                        TiaFileFormat.Wrappers.Hmi.ScriptLang.Javascript => ".js",
+                                        TiaFileFormat.Wrappers.Hmi.ScriptLang.C => ".c",
+                                        TiaFileFormat.Wrappers.Hmi.ScriptLang.C_Header => ".h",
+                                    })));
                                     File.WriteAllText(file1, winCCScript.Script);
+
+                                    var file2 = FixPath(Path.Combine(dir, sb.Name.FixFileName() + ".xml"));
+                                    var xml = winCCScript.ToAutomationXml();
+                                    File.WriteAllText(file2, xml);
                                     break;
                                 }
                             case CodeBlock codeBlock:
                                 {
-                                    Directory.CreateDirectory(dir);
-                                    var file1 = Path.Combine(dir, sb.Name.FixFileName() + ".xml");
+                                    var file1 = FixPath(Path.Combine(dir, sb.Name.FixFileName() + ".xml"));
                                     var xml = codeBlock.ToAutomationXml();
                                     File.WriteAllText(file1, xml);
                                     if (codeBlock.BlockLang== BlockLang.SCL)
                                     {
-                                        var file2 = Path.Combine(dir, sb.Name.FixFileName() + ".scl");
+                                        var file2 = FixPath(Path.Combine(dir, sb.Name.FixFileName() + ".scl"));
                                         File.WriteAllText(file2, string.Join("", codeBlock.ToSourceBlock()));
                                     }
                                     else if (codeBlock.BlockLang == BlockLang.STL)
                                     {
-                                        var file2 = Path.Combine(dir, sb.Name.FixFileName() + ".awl");
+                                        var file2 = FixPath(Path.Combine(dir, sb.Name.FixFileName() + ".awl"));
                                         File.WriteAllText(file2, string.Join("", codeBlock.ToSourceBlock()));
                                     }
                                     break;
                                 }
                             case TiaFileFormat.Wrappers.TextLists.TextList textList:
                                 {
-                                    Directory.CreateDirectory(dir);
-                                    var file1 = Path.Combine(dir, sb.Name.FixFileName() + ".json");
+                                    var file1 = FixPath(Path.Combine(dir, sb.Name.FixFileName() + ".json"));
                                     File.WriteAllText(file1, JsonSerializer.Serialize(textList, new JsonSerializerOptions() { WriteIndented = true }));
+                                    break;
+                                }
+                            case TiaFileFormat.Wrappers.Hmi.GraphicLists.GraphicList graphicList:
+                                {
                                     break;
                                 }
                             case TiaFileFormat.Wrappers.Controller.Alarms.AlarmList alarmList:
                                 {
-                                    Directory.CreateDirectory(dir);
-                                    var file1 = Path.Combine(dir, sb.Name.FixFileName() + ".json");
+                                    var file1 = FixPath(Path.Combine(dir, sb.Name.FixFileName() + ".json"));
                                     File.WriteAllText(file1, JsonSerializer.Serialize(alarmList, new JsonSerializerOptions() { WriteIndented = true }));
+
+                                    var file2 = FixPath(Path.Combine(dir, sb.Name.FixFileName() + ".xlsx"));
+                                    using (var workbook = new XLWorkbook())
+                                    {
+                                        workbook.CustomProperties.Add("TIA_Version", "2.1");
+                                        workbook.CustomProperties.Add("FileContent", "Alarm types");
+
+                                        var worksheet = workbook.Worksheets.Add("Type alarms");
+                                        worksheet.Cell(1,1).Value = "Location";
+                                        worksheet.Cell(1,2).Value = "Alarm name";
+                                        worksheet.Cell(1,3).Value = "Message class";
+                                        worksheet.Cell(1,4).Value = "Priority";
+                                        worksheet.Cell(1,5).Value = "Only information";
+                                        worksheet.Cell(1,6).Value = "Display class";
+                                        worksheet.Cell(1,7).Value = "Group id";
+                                        worksheet.Cell(1,8).Value = "Logging";
+
+                                        var alarmColumn = new Dictionary<CultureInfo, int>();
+                                        var infoColumn = new Dictionary<CultureInfo, int>();
+                                        var addiColumn = new Dictionary<CultureInfo, int>();
+
+                                        var langs = alarmList.Alarms.SelectMany(x => x.AlarmText.Texts.Keys).Where(x => x > 0).Distinct().Select(x => new CultureInfo(x)).ToList();
+                                        var i = 8;
+                                        foreach (var l in langs)
+                                        {
+                                            alarmColumn[l] = i;
+                                            worksheet.Cell(1, i++).Value = "\"Alarm text\"" + " - " + l.DisplayName + " / [" + l.Name + "] / Event text";
+                                        }
+                                        foreach (var l in langs)
+                                        {
+                                            infoColumn[l] = i;
+                                            worksheet.Cell(1, i++).Value = "\"Info text\"" + " - " + l.DisplayName + " / [" + l.Name + "] / Info text";
+                                        }
+                                        for (int j = 1; j <= 9; j++)
+                                        {
+                                            foreach (var l in langs)
+                                            {
+                                                if (j == 1)
+                                                    addiColumn[l] = i;
+                                                worksheet.Cell(1, i++).Value = "\"Additional text " + j + "\"" + " - " + l.DisplayName + " / [" + l.Name + "] / Additional text " + j;
+                                            }
+                                        }
+
+                                        int row = 1;
+                                        foreach (var a in alarmList.Alarms)
+                                        {
+                                            row++;
+                                            worksheet.Cell(row, 1).Value = a.Location;
+                                            worksheet.Cell(row, 2).Value = a.Name;
+                                            worksheet.Cell(row, 3).Value = a.AlarmClass?.Name;
+                                            worksheet.Cell(row, 4).Value = a.Priority;
+
+                                            foreach (var l in langs)
+                                            {
+                                                if (a.AlarmText != null &&  a.AlarmText.Texts.TryGetValue(l.LCID, out var alarmText))
+                                                    worksheet.Cell(row, alarmColumn[l]).Value = alarmText;
+                                                if (a.InfoText != null && a.InfoText.Texts.TryGetValue(l.LCID, out var infoText))
+                                                    worksheet.Cell(row, infoColumn[l]).Value = infoText;
+                                                if (a.AdditionalText1 != null && a.AdditionalText1.Texts.TryGetValue(l.LCID, out var add1))
+                                                    worksheet.Cell(row, addiColumn[l] + 0).Value = add1;
+                                                if (a.AdditionalText2 != null && a.AdditionalText2.Texts.TryGetValue(l.LCID, out var add2))
+                                                    worksheet.Cell(row, addiColumn[l] + 1).Value = add2;
+                                                if (a.AdditionalText3 != null && a.AdditionalText3.Texts.TryGetValue(l.LCID, out var add3))
+                                                    worksheet.Cell(row, addiColumn[l] + 2).Value = add3;
+                                                if (a.AdditionalText4 != null && a.AdditionalText4.Texts.TryGetValue(l.LCID, out var add4))
+                                                    worksheet.Cell(row, addiColumn[l] + 3).Value = add4;
+                                                if (a.AdditionalText5 != null && a.AdditionalText5.Texts.TryGetValue(l.LCID, out var add5))
+                                                    worksheet.Cell(row, addiColumn[l] + 4).Value = add5;
+                                                if (a.AdditionalText6 != null && a.AdditionalText6.Texts.TryGetValue(l.LCID, out var add6))
+                                                    worksheet.Cell(row, addiColumn[l] + 5).Value = add6;
+                                                if (a.AdditionalText7 != null && a.AdditionalText7.Texts.TryGetValue(l.LCID, out var add7))
+                                                    worksheet.Cell(row, addiColumn[l] + 6).Value = add7;
+                                                if (a.AdditionalText8 != null && a.AdditionalText8.Texts.TryGetValue(l.LCID, out var add8))
+                                                    worksheet.Cell(row, addiColumn[l] + 7).Value = add8;
+                                                if (a.AdditionalText9 != null && a.AdditionalText9.Texts.TryGetValue(l.LCID, out var add9))
+                                                    worksheet.Cell(row, addiColumn[l] + 8).Value = add9;
+                                            }
+                                        }
+                                        workbook.SaveAs(file2);
+                                    }
                                     break;
                                 }
                             case TiaFileFormat.Wrappers.Hmi.Alarms.AlarmList alarmList:
                                 {
-                                    Directory.CreateDirectory(dir);
-                                    var file1 = Path.Combine(dir, sb.Name.FixFileName() + ".json");
+                                    var file1 = FixPath(Path.Combine(dir, sb.Name.FixFileName() + ".json"));
                                     File.WriteAllText(file1, JsonSerializer.Serialize(alarmList, new JsonSerializerOptions() { WriteIndented = true }));
+                                    break;
+                                }
+                            case TiaFileFormat.Wrappers.Hmi.Connections.HmiConnection hmiConnection:
+                                {
                                     break;
                                 }
                             case TiaFileFormat.Wrappers.CfCharts.CfChart cfChart:
                                 {
-                                    Directory.CreateDirectory(dir);
-                                    var file1 = Path.Combine(dir, sb.Name.FixFileName() + ".json");
+                                    var file1 = FixPath(Path.Combine(dir, sb.Name.FixFileName() + ".json"));
                                     File.WriteAllText(file1, JsonSerializer.Serialize(cfChart, new JsonSerializerOptions() { WriteIndented = true }));
                                     break;
                                 }
                             case TiaFileFormat.Wrappers.UserManagement.User user:
                                 {
-                                    Directory.CreateDirectory(dir);
-                                    var file1 = Path.Combine(dir, sb.Name.FixFileName() + ".json");
+                                    var file1 = FixPath(Path.Combine(dir, sb.Name.FixFileName() + ".json"));
                                     File.WriteAllText(file1, JsonSerializer.Serialize(user, new JsonSerializerOptions() { WriteIndented = true }));
                                     break;
                                 }
@@ -355,5 +450,18 @@ public class Program
             return task;
         }
         return null;
+    }
+
+    private static string FixPath(string path)
+    {
+        if (pathReplacements == null)
+            return path;
+        var d = path;
+        d = d.Replace("\\", "/");
+        foreach (var p in pathReplacements)
+        {
+            d = d.Replace(p.Key, p.Value);
+        }
+        return d;
     }
 }
