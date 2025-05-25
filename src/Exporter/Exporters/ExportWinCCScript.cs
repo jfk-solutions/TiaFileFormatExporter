@@ -6,6 +6,7 @@ using TiaFileFormat.Wrappers.Converters.AutomationXml;
 
 namespace TiaFileFormatExporter.Exporters
 {
+    //TODO: This is a WIP, will completely be changed
     public class ExportWinCCScript : BaseExporter<WinCCScript>
     {
         public async override Task Export(StorageBusinessObject sb, WinCCScript winCCScript, string dir)
