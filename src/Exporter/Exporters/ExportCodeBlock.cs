@@ -24,6 +24,11 @@ namespace TiaFileFormatExporter.Exporters
                 var file2 = FixPath(Path.Combine(dir, sb.Name.FixFileName() + ".awl"));
                 File.WriteAllText(file2, codeBlock.ToSourceBlock(codeBlockConvertOptions), encoding);
             }
+            else if (codeBlock.BlockLang == BlockLang.UDT)
+            {
+                var file2 = FixPath(Path.Combine(dir, sb.Name.FixFileName() + ".udt"));
+                File.WriteAllText(file2, codeBlock.ToSourceBlock(codeBlockConvertOptions), encoding);
+            }
         }
     }
 }
