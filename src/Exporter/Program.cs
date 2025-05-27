@@ -43,13 +43,24 @@ public class Program
                                                 .Where(x => x.BaseType?.IsGenericType == true && x.BaseType?.GetGenericTypeDefinition() == typeof(BaseExporter<>))
                                                 .ToDictionary(x => x.BaseType!.GetGenericArguments()[0], x => (IExporter)Activator.CreateInstance(x)!);
 
-        var parsedArgs = Parser.Default.ParseArguments<Options>(args);
+        using var parser = new Parser(settings =>
+        {
+            settings.AllowMultiInstance = true;
+            settings.HelpWriter = Console.Error;
+        });
+        var parsedArgs = parser.ParseArguments<Options>(args);
         parsedOptions = parsedArgs.Value;
 
         highLevelObjectConverterWrapper = new HighLevelObjectConverterWrapper(new ImageToFileUriProvider(), new ImagesIncludingFromRtfConverter());
         convertOptions = new ConvertOptions();
 
         exportTasks = new List<Task>();
+
+        if (parsedArgs.Tag == ParserResultType.NotParsed)
+        {
+            Console.WriteLine(parsedArgs.ToString());
+            Environment.Exit(1);
+        }
 
         var files = parsedArgs.Value.FileNames;
         outDir = parsedArgs.Value.OutDir;
