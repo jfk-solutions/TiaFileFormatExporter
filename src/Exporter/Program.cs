@@ -8,11 +8,11 @@ using TiaFileFormat;
 using TiaFileFormat.Database;
 using TiaFileFormat.Database.StorageTypes;
 using TiaFileFormat.Wrappers;
-using TiaFileFormat.Wrappers.CodeBlocks;
 using TiaFileFormat.Wrappers.Converters.Code;
 using TiaFileFormatExporter;
 using TiaFileFormatExporter.Classes;
 using TiaFileFormatExporter.Classes.Converters;
+using TiaFileFormatExporter.Exporters;
 using TiaFileFormatExporter.Exporters.Base;
 
 public class Program
@@ -31,17 +31,34 @@ public class Program
     static Dictionary<string, string> pathReplacements;
     public static Options parsedOptions;
     public static ConvertOptions convertOptions;
-    public static CodeBlockToSourceBlockConverter.ConvertOptions codeBlockConvertOptions = new CodeBlockToSourceBlockConverter.ConvertOptions() { Mnemonik = Mnemonic.German };
+    public static CodeBlockToSourceBlockConverter.ConvertOptions codeBlockConvertOptions = new CodeBlockToSourceBlockConverter.ConvertOptions() { Mnemonik = TiaFileFormat.Wrappers.CodeBlocks.Mnemonic.German };
     public static Encoding encoding = new UTF8Encoding(true);
-    private static Dictionary<Type, IExporter> exporters;
+    private static Dictionary<Type, List<IExporter>> exporters;
 
     private async static Task Main(string[] args)
     {
         maxBrowserTasks = new SemaphoreSlim(10); //A maximum of 10 chrome instances could be started, to generate screenshots of a web page
 
-        exporters = typeof(Program).Assembly.GetTypes()
-                                                .Where(x => x.BaseType?.IsGenericType == true && x.BaseType?.GetGenericTypeDefinition() == typeof(BaseExporter<>))
-                                                .ToDictionary(x => x.BaseType!.GetGenericArguments()[0], x => (IExporter)Activator.CreateInstance(x)!);
+        exporters = new Dictionary<Type, List<IExporter>>()
+        {
+            { typeof(TiaFileFormat.Wrappers.Controller.Alarms.AlarmList), [new ExportAlarmList()] },
+            { typeof(TiaFileFormat.Wrappers.CfCharts.CfChart), [new ExportCfChart()] },
+            { typeof(TiaFileFormat.Wrappers.CodeBlocks.CodeBlock), [new ExportCodeBlock()] },
+            { typeof(TiaFileFormat.Wrappers.Hmi.GraphicLists.GraphicList), [new ExportGraphicList()] },
+            { typeof(TiaFileFormat.Wrappers.Hmi.Alarms.AlarmList), [new ExportHmiAlarmList()] },
+            { typeof(TiaFileFormat.Wrappers.Hmi.Connections.HmiConnection), [new ExportHmiConnection()] },
+            { typeof(TiaFileFormat.Wrappers.Hmi.Tags.HmiTagTable), [new ExportHmiTagTable()] },
+            { typeof(TiaFileFormat.Wrappers.Images.Image), [new ExportImage()] },
+            { typeof(TiaFileFormat.Wrappers.Controller.Tags.PlcTagTable), [new ExportPlcTagTable()] },
+            { typeof(TiaFileFormat.Wrappers.TextLists.TextList), [new ExportTextList(), new ExportTextListAsCsv()] },
+            { typeof(TiaFileFormat.Wrappers.UserManagement.User), [new ExportUser()] },
+            { typeof(TiaFileFormat.Wrappers.Controller.WatchTable.WatchTable), [new ExportWatchTable()] },
+
+            //These Objects will change...
+            { typeof(TiaFileFormat.Wrappers.Hmi.WinCCAdvanced.WinCCScreen), [new ExportWinCCScreen()] },
+            { typeof(TiaFileFormat.Wrappers.Hmi.WinCCAdvanced.WinCCScript), [new ExportWinCCScript()] },
+            { typeof(TiaFileFormat.Wrappers.Hmi.WinCCUnified.WinCCUnifiedScreen), [new ExportWinCCUnifiedScreen()] },
+        };
 
         using var parser = new Parser(settings =>
         {
@@ -190,7 +207,7 @@ public class Program
 
                             Directory.CreateDirectory(FixPath(dir));
 
-                            exporter.Export(sb, highLevelObject, dir);
+                            exporter.ForEach(x => x.Export(sb, highLevelObject, dir));
                         }
                     }
                 }

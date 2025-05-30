@@ -6,7 +6,7 @@ using TiaFileFormatExporter.Exporters.Base;
 
 namespace TiaFileFormatExporter.Exporters
 {
-    public class ExportCodeBlock : BaseExporter<Image>
+    public class ExportImage : BaseExporter<Image>
     {
         public override async Task Export(StorageBusinessObject sb, Image image, string dir)
         {
