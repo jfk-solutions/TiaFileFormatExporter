@@ -44,6 +44,8 @@ public class Program
             { typeof(TiaFileFormat.Wrappers.Controller.Alarms.AlarmList), [new ExportAlarmList()] },
             { typeof(TiaFileFormat.Wrappers.CfCharts.CfChart), [new ExportCfChart()] },
             { typeof(TiaFileFormat.Wrappers.CodeBlocks.CodeBlock), [new ExportCodeBlock()] },
+            { typeof(TiaFileFormat.Wrappers.CodeBlocks.DataBlock), [new ExportCodeBlock()] },
+            { typeof(TiaFileFormat.Wrappers.CodeBlocks.UserDataType), [new ExportCodeBlock()] },
             { typeof(TiaFileFormat.Wrappers.Hmi.GraphicLists.GraphicList), [new ExportGraphicList()] },
             { typeof(TiaFileFormat.Wrappers.Hmi.Alarms.AlarmList), [new ExportHmiAlarmList()] },
             { typeof(TiaFileFormat.Wrappers.Hmi.Connections.HmiConnection), [new ExportHmiConnection()] },
