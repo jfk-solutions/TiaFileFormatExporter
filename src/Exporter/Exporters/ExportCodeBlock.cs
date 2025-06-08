@@ -9,10 +9,12 @@ namespace TiaFileFormatExporter.Exporters
 {
     public class ExportCodeBlock : BaseExporter<BaseBlock>
     {
+        public static AutomationXmlConverter.ConvertOptions codeBlockConvertOptionsXml = new AutomationXmlConverter.ConvertOptions() { AutomationXmlWithoutNetworksOnSclAndStlBlocks = true };
+
         public override async Task Export(StorageBusinessObject sb, BaseBlock baseBlock, string dir)
         {
             var file1 = FixPath(Path.Combine(dir, sb.Name.FixFileName() + ".xml"));
-            var xml = baseBlock.ToAutomationXml();
+            var xml = baseBlock.ToAutomationXml(codeBlockConvertOptionsXml);
             File.WriteAllText(file1, xml);
             if (baseBlock.BlockLang == BlockLang.SCL)
             {
