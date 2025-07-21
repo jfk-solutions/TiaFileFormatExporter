@@ -55,6 +55,7 @@ public class Program
             { typeof(TiaFileFormat.Wrappers.TextLists.TextList), [new ExportTextList(), new ExportTextListAsCsv()] },
             { typeof(TiaFileFormat.Wrappers.UserManagement.User), [new ExportUser()] },
             { typeof(TiaFileFormat.Wrappers.Controller.WatchTable.WatchTable), [new ExportWatchTable()] },
+            { typeof(TiaFileFormat.Wrappers.Controller.Network.NetworkInformation), [new ExportNetworkInformation()] },
 
             //These Objects will change...
             { typeof(TiaFileFormat.Wrappers.Hmi.WinCCAdvanced.WinCCScreen), [new ExportWinCCScreen()] },
@@ -178,7 +179,8 @@ public class Program
                 (highLevelObjectType == HighLevelObjectType.HmiAlarmList && !parsedOptions.HmiAlarmList && !parsedOptions.All) ||
                 (highLevelObjectType == HighLevelObjectType.User && !parsedOptions.User && !parsedOptions.All) ||
                 (highLevelObjectType == HighLevelObjectType.CfChart && !parsedOptions.Chart && !parsedOptions.All) ||
-                (highLevelObjectType == HighLevelObjectType.Image && !parsedOptions.Image && !parsedOptions.All))
+                (highLevelObjectType == HighLevelObjectType.Image && !parsedOptions.Image && !parsedOptions.All) ||
+                (highLevelObjectType == HighLevelObjectType.NetworkInformation && !parsedOptions.NetworkInformation && !parsedOptions.All))
                 return Task.CompletedTask;
 
             Interlocked.Increment(ref runningTasks);

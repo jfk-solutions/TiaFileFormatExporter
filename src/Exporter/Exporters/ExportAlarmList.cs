@@ -10,10 +10,12 @@ namespace TiaFileFormatExporter.Exporters
 {
     public class ExportAlarmList : BaseExporter<AlarmList>
     {
+        private static JsonSerializerOptions jsonSerializerOptions = new JsonSerializerOptions() { WriteIndented = true };
+
         public override async Task Export(StorageBusinessObject sb, AlarmList alarmList, string dir)
         {
             var file1 = FixPath(Path.Combine(dir, sb.Name.FixFileName() + ".json"));
-            File.WriteAllText(file1, JsonSerializer.Serialize(alarmList, new JsonSerializerOptions() { WriteIndented = true }));
+            File.WriteAllText(file1, JsonSerializer.Serialize(alarmList, jsonSerializerOptions));
 
             var file2 = FixPath(Path.Combine(dir, sb.Name.FixFileName() + ".xlsx"));
             using (var workbook = new XLWorkbook())

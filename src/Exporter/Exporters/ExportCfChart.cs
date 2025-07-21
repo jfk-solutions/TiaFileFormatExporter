@@ -7,10 +7,12 @@ namespace TiaFileFormatExporter.Exporters
 {
     public class ExportCfChart : BaseExporter<TiaFileFormat.Wrappers.CfCharts.CfChart>
     {
+        private static JsonSerializerOptions jsonSerializerOptions = new JsonSerializerOptions() { WriteIndented = true };
+
         public override async Task Export(StorageBusinessObject sb, TiaFileFormat.Wrappers.CfCharts.CfChart cfChart, string dir)
         {
             var file1 = FixPath(Path.Combine(dir, sb.Name.FixFileName() + ".json"));
-            File.WriteAllText(file1, JsonSerializer.Serialize(cfChart, new JsonSerializerOptions() { WriteIndented = true }));
+            File.WriteAllText(file1, JsonSerializer.Serialize(cfChart, jsonSerializerOptions));
         }
     }
 }
