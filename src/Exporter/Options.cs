@@ -16,6 +16,9 @@ namespace TiaFileFormatExporter
         [Option("images", HelpText = "Enable Images export.")]
         public bool Image { get; set; }
 
+        [Option("network", HelpText = "Enable Network Information export.")]
+        public bool NetworkInformation { get; set; }
+
         [Option("opc", HelpText = "Enable Opc export.")]
         public bool Opc { get; set; }
 
