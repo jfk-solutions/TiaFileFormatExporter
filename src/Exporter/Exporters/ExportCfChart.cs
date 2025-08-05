@@ -11,7 +11,7 @@ namespace TiaFileFormatExporter.Exporters
 
         public override async Task Export(StorageBusinessObject sb, TiaFileFormat.Wrappers.CfCharts.CfChart cfChart, string dir)
         {
-            var file1 = FixPath(Path.Combine(dir, sb.Name.FixFileName() + ".json"));
+            var file1 = FixPath(Path.Combine(dir, cfChart.Name.FixFileName() + ".json"));
             File.WriteAllText(file1, JsonSerializer.Serialize(cfChart, jsonSerializerOptions));
         }
     }
