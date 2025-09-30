@@ -10,13 +10,13 @@ namespace TiaFileFormatExporter.Exporters
     {
         public async override Task Export(StorageBusinessObject sb, WinCCScreen winCCScreen, string dir)
         {
-            var file1 = FixPath(Path.Combine(dir, sb.Name.FixFileName() + ".html"));
+            var file1 = FixPath(Path.Combine(dir, winCCScreen.Name.FixFileName() + ".html"));
             File.WriteAllText(file1, winCCScreen.Html);
-            var file2 = FixPath(Path.Combine(dir, sb.Name.FixFileName() + ".vb"));
+            var file2 = FixPath(Path.Combine(dir, winCCScreen.Name.FixFileName() + ".vb"));
             File.WriteAllText(file2, winCCScreen.GetScriptString());
             if (parsedOptions.Snapshot)
             {
-                var file3 = FixPath(Path.Combine(dir, sb.Name.FixFileName() + ".png"));
+                var file3 = FixPath(Path.Combine(dir, winCCScreen.Name.FixFileName() + ".png"));
                 await maxBrowserTasks.WaitAsync();
                 try
                 {

@@ -50,6 +50,7 @@ public class Program
             { typeof(TiaFileFormat.Wrappers.Hmi.Alarms.HmiAlarmList), [new ExportHmiAlarmList()] },
             { typeof(TiaFileFormat.Wrappers.Hmi.Connections.HmiConnection), [new ExportHmiConnection()] },
             { typeof(TiaFileFormat.Wrappers.Hmi.Tags.HmiTagTable), [new ExportHmiTagTable()] },
+            { typeof(TiaFileFormat.Wrappers.Hmi.Udts.HmiUdt), [new ExportHmiUdt()] },
             { typeof(TiaFileFormat.Wrappers.Images.Image), [new ExportImage()] },
             { typeof(TiaFileFormat.Wrappers.Controller.Tags.PlcTagTable), [new ExportPlcTagTable()] },
             { typeof(TiaFileFormat.Wrappers.TextLists.TextList), [new ExportTextList(), new ExportTextListAsCsv()] },
@@ -158,9 +159,9 @@ public class Program
 
     private static void WalkProject(StorageBusinessObject sb, string path)
     {
-        ExportObject(sb, path);
+        ExportObject(sb, path); //?.Wait(); //uncomment to walk single objects (for debug)
         foreach (var o in sb.ProjectTreeChildren)
-            WalkProject(o, path + "/" + sb.Name);
+            WalkProject(o, path + "/" + sb.ProcessedName);
     }
 
     private static Task? ExportObject(StorageBusinessObject sb, string path)
@@ -174,6 +175,7 @@ public class Program
                 (highLevelObjectType == HighLevelObjectType.PlcWatchTable && !parsedOptions.PlcWatchTable && !parsedOptions.All) ||
                 (highLevelObjectType == HighLevelObjectType.WinCCScript && !parsedOptions.WinCCScript && !parsedOptions.All) ||
                 (highLevelObjectType == HighLevelObjectType.WinCCTagTable && !parsedOptions.WinCCTagTable && !parsedOptions.All) ||
+                (highLevelObjectType == HighLevelObjectType.HmiUdt && !parsedOptions.WinCCTagTable && !parsedOptions.All) ||
                 (highLevelObjectType == HighLevelObjectType.WinCCScreen && !parsedOptions.Screens && !parsedOptions.All) ||
                 (highLevelObjectType == HighLevelObjectType.WinCCUnifiedScreen && !parsedOptions.Screens && !parsedOptions.All) ||
                 (highLevelObjectType == HighLevelObjectType.TextList && !parsedOptions.TextList && !parsedOptions.All) ||

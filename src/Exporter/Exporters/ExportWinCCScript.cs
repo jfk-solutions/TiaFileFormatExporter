@@ -11,7 +11,7 @@ namespace TiaFileFormatExporter.Exporters
     {
         public async override Task Export(StorageBusinessObject sb, WinCCScript winCCScript, string dir)
         {
-            var file1 = FixPath(Path.Combine(dir, sb.Name.FixFileName() + (winCCScript.ScriptLang switch
+            var file1 = FixPath(Path.Combine(dir, winCCScript.Name.FixFileName() + (winCCScript.ScriptLang switch
             {
                 TiaFileFormat.Wrappers.Hmi.ScriptLang.VB => ".vb",
                 TiaFileFormat.Wrappers.Hmi.ScriptLang.Javascript => ".js",
@@ -20,7 +20,7 @@ namespace TiaFileFormatExporter.Exporters
             })));
             File.WriteAllText(file1, winCCScript.Script);
 
-            var file2 = FixPath(Path.Combine(dir, sb.Name.FixFileName() + ".xml"));
+            var file2 = FixPath(Path.Combine(dir, winCCScript.Name.FixFileName() + ".xml"));
             var xml = winCCScript.ToAutomationXml();
             File.WriteAllText(file2, xml);
         }
