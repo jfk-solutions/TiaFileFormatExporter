@@ -17,7 +17,11 @@ namespace TiaFileFormatExporter.Classes
             }
             var att = storageObject.GetChild<HmiInternalImageAttributes>();
 
-            return url + "Images/" + storageObject.ProcessedName.FixFileName() + (att?.FileExtension ?? ".unkown");
+            var name = storageObject.ProcessedName;
+            if (name == null)
+                name = "noName_" + Guid.NewGuid().ToString().Replace("-", "");
+
+            return url + "Images/" + name.FixFileName() + (att?.FileExtension ?? ".unkown");
         }
     }
 }
