@@ -34,6 +34,7 @@ public class Program
     public static CodeBlockToSourceBlockConverter.ConvertOptions codeBlockConvertOptions = new CodeBlockToSourceBlockConverter.ConvertOptions() { Mnemonik = TiaFileFormat.Wrappers.CodeBlocks.Mnemonic.German };
     public static Encoding encoding = new UTF8Encoding(true);
     private static Dictionary<Type, List<IExporter>> exporters;
+    static Lock lockObj = new Lock();
 
     private async static Task Main(string[] args)
     {
@@ -112,7 +113,9 @@ public class Program
             var tfp = TiaFileProvider.CreateFromSingleFile(file);
             var database = TiaDatabaseFile.Load(tfp);
 
+            //var sw2 = new Stopwatch();
             //database.ParseAllObjects();
+            //sw2.Stop();
 
             var prjNm = Path.GetFileNameWithoutExtension(file) + "/";
             if (parsedOptions.NoProjectName)
@@ -144,7 +147,7 @@ public class Program
 
             if (database.RootObject.StoreObjectIds.TryGetValue("Project", out var prj))
                 WalkProject((StorageBusinessObject)prj.StorageObject, prjNm + "Project");
-            if (database.RootObject.StoreObjectIds.TryGetValue("Library", out var lb))
+            if (parsedOptions.ExportLib && database.RootObject.StoreObjectIds.TryGetValue("Library", out var lb))
                 WalkProject((StorageBusinessObject)lb.StorageObject, prjNm + "Library");
 
             await Task.WhenAll(exportTasks);
@@ -215,15 +218,19 @@ public class Program
 
                             exportedCount++;
 
-                            Directory.CreateDirectory(FixPath(dir));
+                            Directory.CreateDirectory(ReplacePaths(dir));
 
                             exporter.ForEach(x => x.Export(sb, highLevelObject, dir));
                         }
                     }
                 }
-                catch (Exception)
+                catch (Exception ex)
                 {
-                    exceptionCount++;
+                    lock (lockObj)
+                    {
+                        File.AppendAllText("D:\\err.txt", sb.Header.StoreObjectId.ToString() + "\r\n\r\n" + ex.ToString() + "\r\n\r\n");
+                        exceptionCount++;
+                    }
                 }
 
                 Interlocked.Decrement(ref runningTasks);
@@ -250,7 +257,7 @@ public class Program
         return null;
     }
 
-    public static string FixPath(string path)
+    public static string ReplacePaths(string path)
     {
         if (pathReplacements == null)
             return path;

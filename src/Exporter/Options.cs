@@ -4,6 +4,9 @@ namespace TiaFileFormatExporter
 {
     public class Options
     {
+        [Option("lib", HelpText = "Enable export of Library objects.")]
+        public bool ExportLib { get; set; }
+
         [Option("all", HelpText = "Enable All export.")]
         public bool All { get; set; }
 

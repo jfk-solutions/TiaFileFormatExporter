@@ -26,7 +26,7 @@ namespace TiaFileFormatExporter.Exporters.Base
 
         protected static string FixPath(string path)
         {
-            return Program.FixPath(path);
+            return Program.ReplacePaths(path);
         }
     }
 }
