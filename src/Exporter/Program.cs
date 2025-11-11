@@ -31,7 +31,7 @@ public class Program
     static Dictionary<string, string> pathReplacements;
     public static Options parsedOptions;
     public static ConvertOptions convertOptions;
-    public static CodeBlockToSourceBlockConverter.ConvertOptions codeBlockConvertOptions = new CodeBlockToSourceBlockConverter.ConvertOptions() { Mnemonik = TiaFileFormat.Wrappers.CodeBlocks.Mnemonic.German };
+    public static CodeBlockToSourceBlockConverter.ConvertOptions codeBlockConvertOptions = new CodeBlockToSourceBlockConverter.ConvertOptions() { Mnemonik = TiaFileFormat.Wrappers.CodeBlocks.Mnemonic.German, Culture = new System.Globalization.CultureInfo(0x407) };
     public static Encoding encoding = new UTF8Encoding(true);
     private static Dictionary<Type, List<IExporter>> exporters;
     static Lock lockObj = new Lock();
