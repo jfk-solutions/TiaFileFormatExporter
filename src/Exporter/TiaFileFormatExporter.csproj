@@ -18,16 +18,16 @@
     <PackageReference Include="ClosedXML" Version="0.105.0" />
     <PackageReference Include="CommandLineParser" Version="2.9.1" />
     <PackageReference Include="CsvHelper" Version="33.1.0" />
-    <PackageReference Include="Magick.NET-Q16-AnyCPU" Version="14.8.2" />
-    <PackageReference Include="Magick.NET.Core" Version="14.8.2" />
+    <PackageReference Include="Magick.NET-Q16-AnyCPU" Version="14.9.1" />
+    <PackageReference Include="Magick.NET.Core" Version="14.9.1" />
     <PackageReference Include="RtfDomParser" Version="7.0.0" />
     <PackageReference Include="BouncyCastle.Cryptography" Version="2.6.2" />
-    <PackageReference Include="SharpCompress" Version="0.40.0" />
+    <PackageReference Include="SharpCompress" Version="0.41.0" />
     <PackageReference Include="zlib.net-mutliplatform" Version="1.0.8" />
   </ItemGroup>
 
     <ItemGroup>
-        <PackageReference Include="jfk-solutions.TiaFileFormat" Version="2025.9.30.1" />
+        <PackageReference Include="jfk-solutions.TiaFileFormat" Version="2025.11.11.1" />
     </ItemGroup>
 
 </Project>
