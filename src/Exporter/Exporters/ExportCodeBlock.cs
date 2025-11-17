@@ -40,6 +40,11 @@ namespace TiaFileFormatExporter.Exporters
                 var file2 = FixPath(Path.Combine(dir, sb.Name.FixFileName() + ".udt"));
                 File.WriteAllText(file2, baseBlock.ToSourceBlock(codeBlockConvertOptions), encoding);
             }
+            else if (baseBlock is DataBlock)
+            {
+                var file2 = FixPath(Path.Combine(dir, sb.Name.FixFileName() + ".db"));
+                File.WriteAllText(file2, baseBlock.ToSourceBlock(codeBlockConvertOptions), encoding);
+            }
         }
     }
 }
