@@ -20,7 +20,10 @@ namespace TiaFileFormatExporter.Exporters
         {
             var file = FixPath(Path.Combine(dir, "Network", networkInformation.Name.FixFileName() + ".json"));
             Directory.CreateDirectory(FixPath(Path.Combine(dir, "Network")));
-            File.WriteAllText(file, JsonSerializer.Serialize(networkInformation, jsonSerializerOptions));
+            if (networkInformation is EthernetNetworkInformation eth)
+                File.WriteAllText(file, JsonSerializer.Serialize(eth, jsonSerializerOptions));
+            else if (networkInformation is ProfibusNetworkInformation pb)
+                File.WriteAllText(file, JsonSerializer.Serialize(pb, jsonSerializerOptions));
         }
     }
 }
