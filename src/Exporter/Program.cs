@@ -59,7 +59,8 @@ public class Program
             { typeof(TiaFileFormat.Wrappers.Controller.WatchTable.WatchTable), [new ExportWatchTable()] },
             { typeof(TiaFileFormat.Wrappers.Controller.Opc.OpcServerInterface), [new ExportOpcServerInterface()] },
             { typeof(TiaFileFormat.Wrappers.Controller.Opc.OpcClientInterface), [new ExportOpcClientInterface()] },
-            { typeof(TiaFileFormat.Wrappers.Controller.Network.NetworkInformation), [new ExportNetworkInformation()] },
+            { typeof(TiaFileFormat.Wrappers.Controller.Network.EthernetNetworkInformation), [new ExportNetworkInformation()] },
+            { typeof(TiaFileFormat.Wrappers.Controller.Network.ProfibusNetworkInformation), [new ExportNetworkInformation()] },
 
             //These Objects will change...
             { typeof(TiaFileFormat.Wrappers.Hmi.WinCCAdvanced.WinCCScreen), [new ExportWinCCScreen()] },
