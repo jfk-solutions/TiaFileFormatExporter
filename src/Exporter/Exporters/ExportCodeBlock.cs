@@ -35,6 +35,28 @@ namespace TiaFileFormatExporter.Exporters
                 var file2 = FixPath(Path.Combine(dir, sb.Name.FixFileName() + ".awl"));
                 File.WriteAllText(file2, baseBlock.ToSourceBlock(codeBlockConvertOptions), encoding);
             }
+            else if (baseBlock.BlockLang == BlockLang.LAD_CLASSIC ||
+                     baseBlock.BlockLang == BlockLang.FBD_CLASSIC ||
+                     baseBlock.BlockLang == BlockLang.F_LAD ||
+                     baseBlock.BlockLang == BlockLang.F_LAD)
+            {
+                var cb = (CodeBlock)baseBlock;
+                var nr = 0;
+                foreach(var nw in cb.Networks)
+                {
+                    nr++;
+                    if (nw.BlockLang == BlockLang.SCL)
+                    {
+                        var file2 = FixPath(Path.Combine(dir, sb.Name.FixFileName() + "_Network_" + nr + ".scl"));
+                        File.WriteAllText(file2, baseBlock.ToSourceBlock(codeBlockConvertOptions), encoding);
+                    }
+                    else if (nw.BlockLang == BlockLang.STL)
+                    {
+                        var file2 = FixPath(Path.Combine(dir, sb.Name.FixFileName() + "_Network_" + nr + ".awl"));
+                        File.WriteAllText(file2, baseBlock.ToSourceBlock(codeBlockConvertOptions), encoding);
+                    }
+                }
+            }
             else if (baseBlock is UserDataType)
             {
                 var file2 = FixPath(Path.Combine(dir, sb.Name.FixFileName() + ".udt"));
