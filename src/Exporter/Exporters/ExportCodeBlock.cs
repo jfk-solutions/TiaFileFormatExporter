@@ -19,13 +19,6 @@ namespace TiaFileFormatExporter.Exporters
                 WriteCommentAndTitleAlthoughWhenEmpty = true,
             };
 
-        public static CodeBlockToSourceBlockConverter.ConvertOptions codeBlockConvertOptions =
-          new CodeBlockToSourceBlockConverter.ConvertOptions()
-          {
-              StripHeader = false,
-              Mnemonik = Mnemonic.German
-          };
-
         private static SclToSclSourceCodeConverter sclConverter = new SclToSclSourceCodeConverter();
         private static StlToStlSourceCodeConverter stlConverter = new StlToStlSourceCodeConverter();
 
