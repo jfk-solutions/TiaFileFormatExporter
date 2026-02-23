@@ -1,10 +1,11 @@
-﻿using TiaFileFormat.Database.StorageTypes;
+﻿using System.Text;
+using TiaFileFormat.Database.StorageTypes;
+using TiaFileFormat.Helper;
 using TiaFileFormat.Wrappers.CodeBlocks;
-using TiaFileFormatExporter.Classes;
 using TiaFileFormat.Wrappers.Converters.AutomationXml;
 using TiaFileFormat.Wrappers.Converters.Code;
+using TiaFileFormatExporter.Classes;
 using TiaFileFormatExporter.Exporters.Base;
-using System.Text;
 
 namespace TiaFileFormatExporter.Exporters
 {
@@ -13,10 +14,20 @@ namespace TiaFileFormatExporter.Exporters
         public static AutomationXmlConverter.ConvertOptions codeBlockConvertOptionsXml = 
             new AutomationXmlConverter.ConvertOptions() 
             { 
-                AutomationXmlWithoutNetworksOnSclAndStlBlocks = true, 
+                AutomationXmlWithoutNetworksOnSclAndStlBlocks = false, 
                 WithDefaultsInInterface = true,
                 WriteCommentAndTitleAlthoughWhenEmpty = true,
             };
+
+        public static CodeBlockToSourceBlockConverter.ConvertOptions codeBlockConvertOptions =
+          new CodeBlockToSourceBlockConverter.ConvertOptions()
+          {
+              StripHeader = false,
+              Mnemonik = Mnemonic.German
+          };
+
+        private static SclToSclSourceCodeConverter sclConverter = new SclToSclSourceCodeConverter();
+        private static StlToStlSourceCodeConverter stlConverter = new StlToStlSourceCodeConverter();
 
         private static Encoding utf8WithBom = new UTF8Encoding(true);
 
@@ -48,12 +59,16 @@ namespace TiaFileFormatExporter.Exporters
                     if (nw.BlockLang == BlockLang.SCL)
                     {
                         var file2 = FixPath(Path.Combine(dir, sb.Name.FixFileName() + "_Network_" + nr + ".scl"));
-                        File.WriteAllText(file2, baseBlock.ToSourceBlock(codeBlockConvertOptions), encoding);
+                        var builder = new IndentedStringBuilder(3);
+                        sclConverter.Convert(builder, nw, cb, codeBlockConvertOptions);
+                        File.WriteAllText(file2, builder.ToString(), encoding);
                     }
                     else if (nw.BlockLang == BlockLang.STL)
                     {
                         var file2 = FixPath(Path.Combine(dir, sb.Name.FixFileName() + "_Network_" + nr + ".awl"));
-                        File.WriteAllText(file2, baseBlock.ToSourceBlock(codeBlockConvertOptions), encoding);
+                        var builder = new IndentedStringBuilder(3);
+                        stlConverter.Convert(builder, nw, cb, codeBlockConvertOptions);
+                        File.WriteAllText(file2, builder.ToString(), encoding);
                     }
                 }
             }
