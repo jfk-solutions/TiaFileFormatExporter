@@ -1,5 +1,5 @@
 ﻿using TiaFileFormat.Database.StorageTypes;
-using TiaFileFormat.Wrappers.Hmi.Tags;
+using BaseHmiTypes.Tags;
 using TiaFileFormatExporter.Classes;
 using TiaFileFormatExporter.Classes.Helper;
 using TiaFileFormatExporter.Exporters.Base;
@@ -10,7 +10,7 @@ namespace TiaFileFormatExporter.Exporters
     {
         public override async Task Export(StorageBusinessObject sb, HmiTagTable hmiTagTable, string dir)
         {
-            var file = FixPath(Path.Combine(dir, hmiTagTable.Name.FixFileName() + ".csv"));
+            var file = FixPath(Path.Combine(dir, (hmiTagTable.Name ?? sb.ProcessedName).FixFileName() + ".csv"));
             var csv = CsvSerializer.ToCsv(hmiTagTable.Tags);
             File.WriteAllText(file, csv);
         }

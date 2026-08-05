@@ -1,5 +1,6 @@
 ﻿using TiaFileFormat.Database.StorageTypes;
-using TiaFileFormat.Wrappers.Hmi.WinCCAdvanced;
+using BaseHmiTypes.Screens.Base;
+using BaseHmiTypes.Scripts;
 using TiaFileFormatExporter.Classes;
 using TiaFileFormatExporter.Exporters.Base;
 using TiaFileFormat.Wrappers.Converters.AutomationXml;
@@ -7,20 +8,21 @@ using TiaFileFormat.Wrappers.Converters.AutomationXml;
 namespace TiaFileFormatExporter.Exporters
 {
     //TODO: This is a WIP, will completely be changed
-    public class ExportWinCCScript : BaseExporter<WinCCScript>
+    public class ExportWinCCScript : BaseExporter<HmiScript>
     {
-        public async override Task Export(StorageBusinessObject sb, WinCCScript winCCScript, string dir)
+        public async override Task Export(StorageBusinessObject sb, HmiScript winCCScript, string dir)
         {
-            var file1 = FixPath(Path.Combine(dir, winCCScript.Name.FixFileName() + (winCCScript.ScriptLang switch
+            var scriptName = (winCCScript.Name ?? sb.ProcessedName).FixFileName();
+            var file1 = FixPath(Path.Combine(dir, scriptName + (winCCScript.Language switch
             {
-                TiaFileFormat.Wrappers.Hmi.ScriptLang.VB => ".vb",
-                TiaFileFormat.Wrappers.Hmi.ScriptLang.Javascript => ".js",
-                TiaFileFormat.Wrappers.Hmi.ScriptLang.C => ".c",
-                TiaFileFormat.Wrappers.Hmi.ScriptLang.C_Header => ".h",
+                HmiScriptLanguage.VBScript => ".vb",
+                HmiScriptLanguage.JavaScript => ".js",
+                HmiScriptLanguage.C => ".c",
+                _ => ".txt",
             })));
-            File.WriteAllText(file1, winCCScript.Script);
+            File.WriteAllText(file1, winCCScript.SourceCode);
 
-            var file2 = FixPath(Path.Combine(dir, winCCScript.Name.FixFileName() + ".xml"));
+            var file2 = FixPath(Path.Combine(dir, scriptName + ".xml"));
             var xml = winCCScript.ToAutomationXml();
             File.WriteAllText(file2, xml);
         }

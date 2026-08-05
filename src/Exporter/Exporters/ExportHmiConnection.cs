@@ -1,5 +1,5 @@
 ﻿using TiaFileFormat.Database.StorageTypes;
-using TiaFileFormat.Wrappers.Hmi.Connections;
+using BaseHmiTypes.Connections;
 using TiaFileFormatExporter.Exporters.Base;
 
 namespace TiaFileFormatExporter.Exporters

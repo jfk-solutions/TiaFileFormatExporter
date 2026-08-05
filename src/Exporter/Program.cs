@@ -1,4 +1,6 @@
 ﻿using CommandLine;
+using BaseHmiTypes.Screens;
+using BaseHmiTypes.Screens.Base;
 using Siemens.Simatic.Hmi.Utah.Globalization;
 using System.Collections.Concurrent;
 using System.Diagnostics;
@@ -31,6 +33,7 @@ public class Program
     static Dictionary<string, string> pathReplacements;
     public static Options parsedOptions;
     public static ConvertOptions convertOptions;
+    public static TiaFileFormat.Wrappers.Hmi.TiaHmiProject? hmiProject;
     public static CodeBlockToSourceBlockConverter.ConvertOptions codeBlockConvertOptions = new CodeBlockToSourceBlockConverter.ConvertOptions() { Mnemonik = TiaFileFormat.Wrappers.CodeBlocks.Mnemonic.German, Culture = new System.Globalization.CultureInfo(0x407) };
     public static Encoding encoding = new UTF8Encoding(true);
     private static Dictionary<Type, List<IExporter>> exporters;
@@ -47,10 +50,10 @@ public class Program
             { typeof(TiaFileFormat.Wrappers.CodeBlocks.CodeBlock), [new ExportCodeBlock()] },
             { typeof(TiaFileFormat.Wrappers.CodeBlocks.DataBlock), [new ExportCodeBlock()] },
             { typeof(TiaFileFormat.Wrappers.CodeBlocks.UserDataType), [new ExportCodeBlock()] },
-            { typeof(TiaFileFormat.Wrappers.Hmi.GraphicLists.GraphicList), [new ExportGraphicList()] },
-            { typeof(TiaFileFormat.Wrappers.Hmi.Alarms.HmiAlarmList), [new ExportHmiAlarmList()] },
-            { typeof(TiaFileFormat.Wrappers.Hmi.Connections.HmiConnection), [new ExportHmiConnection()] },
-            { typeof(TiaFileFormat.Wrappers.Hmi.Tags.HmiTagTable), [new ExportHmiTagTable()] },
+            { typeof(BaseHmiTypes.TextGraphicLists.HmiGraphicList), [new ExportGraphicList()] },
+            { typeof(BaseHmiTypes.Alarms.HmiAlarmList), [new ExportHmiAlarmList()] },
+            { typeof(BaseHmiTypes.Connections.HmiConnection), [new ExportHmiConnection()] },
+            { typeof(BaseHmiTypes.Tags.HmiTagTable), [new ExportHmiTagTable()] },
             { typeof(TiaFileFormat.Wrappers.Hmi.Udts.HmiUdt), [new ExportHmiUdt()] },
             { typeof(TiaFileFormat.Wrappers.Images.Image), [new ExportImage()] },
             { typeof(TiaFileFormat.Wrappers.Controller.Tags.PlcTagTable), [new ExportPlcTagTable()] },
@@ -63,9 +66,9 @@ public class Program
             { typeof(TiaFileFormat.Wrappers.Controller.Network.ProfibusNetworkInformation), [new ExportNetworkInformation()] },
 
             //These Objects will change...
-            { typeof(TiaFileFormat.Wrappers.Hmi.WinCCAdvanced.WinCCScreen), [new ExportWinCCScreen()] },
-            { typeof(TiaFileFormat.Wrappers.Hmi.WinCCAdvanced.WinCCScript), [new ExportWinCCScript()] },
-            { typeof(TiaFileFormat.Wrappers.Hmi.WinCCUnified.WinCCUnifiedScreen), [new ExportWinCCUnifiedScreen()] },
+            { typeof(HmiScreen), [new ExportWinCCScreen()] },
+            { typeof(HmiFaceplateType), [new ExportWinCCScreen()] },
+            { typeof(BaseHmiTypes.Scripts.HmiScript), [new ExportWinCCScript()] },
         };
 
         using var parser = new Parser(settings =>
@@ -113,6 +116,7 @@ public class Program
 
             var tfp = TiaFileProvider.CreateFromSingleFile(file);
             var database = TiaDatabaseFile.Load(tfp);
+            hmiProject = new TiaFileFormat.Wrappers.Hmi.TiaHmiProject(database, highLevelObjectConverterWrapper);
 
             //var sw2 = new Stopwatch();
             //database.ParseAllObjects();
@@ -180,8 +184,9 @@ public class Program
                 (highLevelObjectType == HighLevelObjectType.WinCCScript && !parsedOptions.WinCCScript && !parsedOptions.All) ||
                 (highLevelObjectType == HighLevelObjectType.WinCCTagTable && !parsedOptions.WinCCTagTable && !parsedOptions.All) ||
                 (highLevelObjectType == HighLevelObjectType.HmiUdt && !parsedOptions.WinCCTagTable && !parsedOptions.All) ||
-                (highLevelObjectType == HighLevelObjectType.WinCCScreen && !parsedOptions.Screens && !parsedOptions.All) ||
-                (highLevelObjectType == HighLevelObjectType.WinCCUnifiedScreen && !parsedOptions.Screens && !parsedOptions.All) ||
+                ((highLevelObjectType == HighLevelObjectType.HmiScreen ||
+                  highLevelObjectType == HighLevelObjectType.WinCCScreen ||
+                  highLevelObjectType == HighLevelObjectType.WinCCUnifiedScreen) && !parsedOptions.Screens && !parsedOptions.All) ||
                 (highLevelObjectType == HighLevelObjectType.TextList && !parsedOptions.TextList && !parsedOptions.All) ||
                 (highLevelObjectType == HighLevelObjectType.AlarmList && !parsedOptions.AlarmList && !parsedOptions.All) ||
                 (highLevelObjectType == HighLevelObjectType.HmiAlarmList && !parsedOptions.HmiAlarmList && !parsedOptions.All) ||
@@ -205,23 +210,25 @@ public class Program
                         {
                             var dir = Path.Combine(outDir, path).FixPath();
 
-                            var nm = Path.Combine(dir, highLevelObject.Name);
+                            var objectName = GetObjectName(highLevelObject, sb);
+                            var lastModified = GetLastModified(highLevelObject);
+                            var nm = Path.Combine(dir, objectName);
 
-                            if (highLevelObject.LastModified != null)
+                            if (lastModified != null)
                             {
-                                if (fileModifiedTimeStamps.TryGetValue(nm, out var dt) && dt == highLevelObject.LastModified)
+                                if (fileModifiedTimeStamps.TryGetValue(nm, out var dt) && dt == lastModified)
                                 {
                                     skippedCount++;
                                     return;
                                 }
-                                fileModifiedTimeStamps[nm] = highLevelObject.LastModified.Value;
+                                fileModifiedTimeStamps[nm] = lastModified.Value;
                             }
 
                             exportedCount++;
 
                             Directory.CreateDirectory(ReplacePaths(dir));
 
-                            exporter.ForEach(x => x.Export(sb, highLevelObject, dir));
+                            await Task.WhenAll(exporter.Select(x => x.Export(sb, highLevelObject, dir)));
                         }
                     }
                 }
@@ -269,5 +276,16 @@ public class Program
             d = d.Replace(p.Key, p.Value);
         }
         return d;
+    }
+
+    private static string GetObjectName(BaseHmiTypes.IHmiObject highLevelObject, StorageBusinessObject storageBusinessObject)
+    {
+        var name = highLevelObject.GetType().GetProperty("Name")?.GetValue(highLevelObject) as string;
+        return string.IsNullOrWhiteSpace(name) ? storageBusinessObject.ProcessedName : name;
+    }
+
+    private static DateTime? GetLastModified(BaseHmiTypes.IHmiObject highLevelObject)
+    {
+        return highLevelObject.GetType().GetProperty("LastModified")?.GetValue(highLevelObject) as DateTime?;
     }
 }

@@ -1,6 +1,6 @@
 ﻿using System.Text.Json;
 using TiaFileFormat.Database.StorageTypes;
-using TiaFileFormat.Wrappers.Hmi.Alarms;
+using BaseHmiTypes.Alarms;
 using TiaFileFormatExporter.Classes;
 using TiaFileFormatExporter.Exporters.Base;
 
