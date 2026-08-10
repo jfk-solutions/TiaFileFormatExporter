@@ -19,6 +19,9 @@ namespace TiaFileFormatExporter
         [Option("images", HelpText = "Enable Images export.")]
         public bool Image { get; set; }
 
+        [Option("base64images", HelpText = "Embed images in screen HTML as base64 data URIs.")]
+        public bool Base64Images { get; set; }
+
         [Option("network", HelpText = "Enable Network Information export.")]
         public bool NetworkInformation { get; set; }
 

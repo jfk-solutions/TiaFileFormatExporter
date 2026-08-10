@@ -20,12 +20,16 @@ The Options to export are:
  - --plcblock - PLC Blocks (DB, FB, FC, ...)
  - --plctagtable - PLC tag tables as csv
  - --images - images
+ - --base64images - embed images in screen HTML as base64 data URIs
  - --hmitagtable - HMI tag tables as csv
  - --plcwatchtable - PLC watchtables as csv
  - --winccscript - WinCC Scripts (vb, js, c)
  - --wincctagtable - WinCC Tag Tables as CSV
  - --screens - export WinCC/WinCCUnified screens as HTML
  - --snapshot - generate a Image of the Screen HTML via Chrome
+
+For a self-contained screen HTML export, use `--screens --base64images`. The existing
+`--images` option exports project images as separate files instead.
 
 # License 
 

@@ -77,18 +77,22 @@ public class Program
             settings.HelpWriter = Console.Error;
         });
         var parsedArgs = parser.ParseArguments<Options>(args);
-        parsedOptions = parsedArgs.Value;
-
-        highLevelObjectConverterWrapper = new HighLevelObjectConverterWrapper(new ImageToFileUriProvider(), new ImagesIncludingFromRtfConverter());
-        convertOptions = new ConvertOptions();
-
-        exportTasks = new List<Task>();
-
         if (parsedArgs.Tag == ParserResultType.NotParsed)
         {
             Console.WriteLine(parsedArgs.ToString());
             Environment.Exit(1);
+            return;
         }
+
+        parsedOptions = parsedArgs.Value;
+
+        TiaFileFormat.Wrappers.Hmi.IImageUriProvider imageUriProvider = parsedOptions.Base64Images
+            ? new TiaFileFormat.Wrappers.Hmi.ImageToDataUriProvider()
+            : new ImageToFileUriProvider();
+        highLevelObjectConverterWrapper = new HighLevelObjectConverterWrapper(imageUriProvider, new ImagesIncludingFromRtfConverter());
+        convertOptions = new ConvertOptions();
+
+        exportTasks = new List<Task>();
 
         var files = parsedArgs.Value.FileNames;
         outDir = parsedArgs.Value.OutDir;
@@ -244,16 +248,19 @@ public class Program
                 Interlocked.Decrement(ref runningTasks);
                 lock (exportTasks)
                 {
-                    Console.SetCursorPosition(2, 2);
-                    Console.Write("file: " + currentFile + "           ");
-                    Console.SetCursorPosition(2, 3);
-                    Console.Write("export tasks: " + runningTasks + " todo from " + exportTasks.Count + "            ");
-                    Console.SetCursorPosition(5, 4);
-                    Console.Write("exported: " + exportedCount + "           ");
-                    Console.SetCursorPosition(5, 5);
-                    Console.Write("skipped : " + skippedCount + "           ");
-                    Console.SetCursorPosition(5, 6);
-                    Console.Write("exceptions: " + exceptionCount + "           ");
+                    if (!Console.IsOutputRedirected)
+                    {
+                        Console.SetCursorPosition(2, 2);
+                        Console.Write("file: " + currentFile + "           ");
+                        Console.SetCursorPosition(2, 3);
+                        Console.Write("export tasks: " + runningTasks + " todo from " + exportTasks.Count + "            ");
+                        Console.SetCursorPosition(5, 4);
+                        Console.Write("exported: " + exportedCount + "           ");
+                        Console.SetCursorPosition(5, 5);
+                        Console.Write("skipped : " + skippedCount + "           ");
+                        Console.SetCursorPosition(5, 6);
+                        Console.Write("exceptions: " + exceptionCount + "           ");
+                    }
                 }
             });
             lock (exportTasks)
