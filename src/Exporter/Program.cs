@@ -34,7 +34,7 @@ public class Program
     public static Options parsedOptions;
     public static ConvertOptions convertOptions;
     public static TiaFileFormat.Wrappers.Hmi.TiaHmiProject? hmiProject;
-    public static CodeBlockToSourceBlockConverter.ConvertOptions codeBlockConvertOptions = new CodeBlockToSourceBlockConverter.ConvertOptions() { Mnemonik = TiaFileFormat.Wrappers.CodeBlocks.Mnemonic.German, Culture = new System.Globalization.CultureInfo(0x407) };
+    public static CodeBlockToSourceBlockConverter.ConvertOptions codeBlockConvertOptions = new CodeBlockToSourceBlockConverter.ConvertOptions();
     public static Encoding encoding = new UTF8Encoding(true);
     private static Dictionary<Type, List<IExporter>> exporters;
     static Lock lockObj = new Lock();
@@ -90,8 +90,27 @@ public class Program
             Environment.Exit(1);
         }
 
+        ExportCodeBlock.codeBlockConvertOptionsXml.AutomationXmlWithoutNetworksOnSclAndStlBlocks =
+            parsedOptions.OmitSclStlNetworksFromAutomationXml;
+        ExportCodeBlock.codeBlockConvertOptionsXml.ResetSetPoints = parsedOptions.ResetSetPoints;
+        ExportCodeBlock.codeBlockConvertOptionsXml.RemoveOneLeadingBlankFromMultilingualText =
+            parsedOptions.RemoveLeadingMultilingualTextBlank;
+        ExportCodeBlock.codeBlockConvertOptionsXml.OmitInformativeOrganizationBlockMembers =
+            parsedOptions.OmitInformativeOrganizationBlockMembers;
+        ExportCodeBlock.codeBlockConvertOptionsXml.OmitEmptyInheritedInstanceDbMembers =
+            parsedOptions.OmitEmptyInheritedInstanceDbMembers;
+        ExportCodeBlock.codeBlockConvertOptionsXml.OmitEmptyInheritedTypeChildren =
+            parsedOptions.OmitEmptyInheritedTypeChildren;
+        ExportCodeBlock.codeBlockConvertOptionsXml.WithReadOnlyAttributes =
+            !parsedOptions.OmitReadOnlyInterfaceAttributes;
+        codeBlockConvertOptions.Mnemonik = parsedOptions.GermanMnemonics
+            ? TiaFileFormat.Wrappers.CodeBlocks.Mnemonic.German
+            : null;
+
         var files = parsedArgs.Value.FileNames;
         outDir = parsedArgs.Value.OutDir;
+
+        Directory.CreateDirectory(outDir);
 
 
         fileNameModifiedTimeStamps = Path.Combine(outDir, "fileModifiedTimeStamps.json");
@@ -116,6 +135,10 @@ public class Program
 
             var tfp = TiaFileProvider.CreateFromSingleFile(file);
             var database = TiaDatabaseFile.Load(tfp);
+            var editingCulture = database.ProjectEditingCulture;
+            codeBlockConvertOptions.Culture = editingCulture == null
+                ? null
+                : System.Globalization.CultureInfo.GetCultureInfo(editingCulture.LCID);
             hmiProject = new TiaFileFormat.Wrappers.Hmi.TiaHmiProject(database, highLevelObjectConverterWrapper);
 
             //var sw2 = new Stopwatch();
@@ -159,6 +182,7 @@ public class Program
 
             sw.Stop();
             Console.WriteLine();
+            Console.WriteLine($"Exported: {exportedCount}, skipped: {skippedCount}, exceptions: {exceptionCount}");
             Console.WriteLine("Export took: " + sw.ToString());
 
             File.WriteAllText(fileNameModifiedTimeStamps, JsonSerializer.Serialize(fileModifiedTimeStamps, new JsonSerializerOptions() { WriteIndented = true }));
@@ -218,13 +242,13 @@ public class Program
                             {
                                 if (fileModifiedTimeStamps.TryGetValue(nm, out var dt) && dt == lastModified)
                                 {
-                                    skippedCount++;
+                                    Interlocked.Increment(ref skippedCount);
                                     return;
                                 }
                                 fileModifiedTimeStamps[nm] = lastModified.Value;
                             }
 
-                            exportedCount++;
+                            Interlocked.Increment(ref exportedCount);
 
                             Directory.CreateDirectory(ReplacePaths(dir));
 
@@ -237,23 +261,28 @@ public class Program
                     lock (lockObj)
                     {
                         File.AppendAllText("D:\\err.txt", sb.Header.StoreObjectId.ToString() + "\r\n\r\n" + ex.ToString() + "\r\n\r\n");
-                        exceptionCount++;
                     }
+                    Interlocked.Increment(ref exceptionCount);
                 }
-
-                Interlocked.Decrement(ref runningTasks);
-                lock (exportTasks)
+                finally
                 {
-                    Console.SetCursorPosition(2, 2);
-                    Console.Write("file: " + currentFile + "           ");
-                    Console.SetCursorPosition(2, 3);
-                    Console.Write("export tasks: " + runningTasks + " todo from " + exportTasks.Count + "            ");
-                    Console.SetCursorPosition(5, 4);
-                    Console.Write("exported: " + exportedCount + "           ");
-                    Console.SetCursorPosition(5, 5);
-                    Console.Write("skipped : " + skippedCount + "           ");
-                    Console.SetCursorPosition(5, 6);
-                    Console.Write("exceptions: " + exceptionCount + "           ");
+                    Interlocked.Decrement(ref runningTasks);
+                    if (!Console.IsOutputRedirected)
+                    {
+                        lock (exportTasks)
+                        {
+                            Console.SetCursorPosition(2, 2);
+                            Console.Write("file: " + currentFile + "           ");
+                            Console.SetCursorPosition(2, 3);
+                            Console.Write("export tasks: " + runningTasks + " todo from " + exportTasks.Count + "            ");
+                            Console.SetCursorPosition(5, 4);
+                            Console.Write("exported: " + exportedCount + "           ");
+                            Console.SetCursorPosition(5, 5);
+                            Console.Write("skipped : " + skippedCount + "           ");
+                            Console.SetCursorPosition(5, 6);
+                            Console.Write("exceptions: " + exceptionCount + "           ");
+                        }
+                    }
                 }
             });
             lock (exportTasks)

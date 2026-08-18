@@ -28,7 +28,8 @@
 
     <ItemGroup>
         <PackageReference Include="BaseHmiTypes" Version="2026.8.5.1" />
-        <PackageReference Include="jfk-solutions.TiaFileFormat" Version="2026.8.5.1" />
+        <PackageReference Include="jfk-solutions.TiaFileFormat" Version="2026.8.5.1" Condition="'$(UseLocalTiaFileFormat)' != 'true'" />
+        <ProjectReference Include="..\..\..\TiaFileFormat.CSharp\TiaFileFormat\TiaFileFormat.csproj" Condition="'$(UseLocalTiaFileFormat)' == 'true'" />
     </ItemGroup>
 
 </Project>

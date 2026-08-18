@@ -14,9 +14,11 @@ namespace TiaFileFormatExporter.Exporters
         public static AutomationXmlConverter.ConvertOptions codeBlockConvertOptionsXml = 
             new AutomationXmlConverter.ConvertOptions() 
             { 
-                AutomationXmlWithoutNetworksOnSclAndStlBlocks = false, 
+                AutomationXmlWithoutNetworksOnSclAndStlBlocks = false,
                 WithDefaultsInInterface = true,
+                WithReadOnlyAttributes = true,
                 WriteCommentAndTitleAlthoughWhenEmpty = true,
+                RemoveOneLeadingBlankFromMultilingualText = false,
             };
 
         private static SclToSclSourceCodeConverter sclConverter = new SclToSclSourceCodeConverter();
