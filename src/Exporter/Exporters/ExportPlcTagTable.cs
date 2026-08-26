@@ -10,6 +10,13 @@ namespace TiaFileFormatExporter.Exporters
     {
         public override async Task Export(StorageBusinessObject sb, PlcTagTable plcTagTable, string dir)
         {
+            if (parsedOptions.TiaGitHandlerCompatible)
+            {
+                var xmlPath = FixPath(Path.Combine(dir, plcTagTable.Name.FixFileName() + ".xml"));
+                TiaGitHandlerCompatibility.WritePlcTagTable(plcTagTable, xmlPath);
+                return;
+            }
+
             var file1 = FixPath(Path.Combine(dir, plcTagTable.Name.FixFileName() + "_Tags.csv"));
             var csv1 = CsvSerializer.ToCsv(plcTagTable.Tags);
             File.WriteAllText(file1, csv1);

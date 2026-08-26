@@ -29,8 +29,18 @@ namespace TiaFileFormatExporter.Exporters
         public override async Task Export(StorageBusinessObject sb, BaseBlock baseBlock, string dir)
         {
             var file1 = FixPath(Path.Combine(dir, sb.Name.FixFileName() + ".xml"));
-            var xml = baseBlock.ToAutomationXml(codeBlockConvertOptionsXml);
-            File.WriteAllText(file1, xml, utf8WithBom);
+            var automationXmlOptions = GetAutomationXmlOptions(baseBlock);
+            if (parsedOptions.StreamAutomationXml)
+            {
+                using var stream = new FileStream(file1, FileMode.Create, FileAccess.Write, FileShare.None,
+                    bufferSize: 65536);
+                baseBlock.WriteAutomationXml(stream, automationXmlOptions);
+            }
+            else
+            {
+                var xml = baseBlock.ToAutomationXml(automationXmlOptions);
+                File.WriteAllText(file1, xml, utf8WithBom);
+            }
             if (baseBlock.BlockLang == BlockLang.SCL)
             {
                 var file2 = FixPath(Path.Combine(dir, sb.Name.FixFileName() + ".scl"));
@@ -41,10 +51,11 @@ namespace TiaFileFormatExporter.Exporters
                 var file2 = FixPath(Path.Combine(dir, sb.Name.FixFileName() + ".awl"));
                 File.WriteAllText(file2, baseBlock.ToSourceBlock(codeBlockConvertOptions), encoding);
             }
-            else if (baseBlock.BlockLang == BlockLang.LAD_CLASSIC ||
+            else if (!parsedOptions.TiaGitHandlerCompatible &&
+                     (baseBlock.BlockLang == BlockLang.LAD_CLASSIC ||
                      baseBlock.BlockLang == BlockLang.FBD_CLASSIC ||
                      baseBlock.BlockLang == BlockLang.F_LAD ||
-                     baseBlock.BlockLang == BlockLang.F_LAD)
+                     baseBlock.BlockLang == BlockLang.F_LAD))
             {
                 var cb = (CodeBlock)baseBlock;
                 var nr = 0;
@@ -72,11 +83,34 @@ namespace TiaFileFormatExporter.Exporters
                 var file2 = FixPath(Path.Combine(dir, sb.Name.FixFileName() + ".udt"));
                 File.WriteAllText(file2, baseBlock.ToSourceBlock(codeBlockConvertOptions), encoding);
             }
-            else if (baseBlock is DataBlock)
+            else if (baseBlock is DataBlock && !parsedOptions.TiaGitHandlerCompatible)
             {
                 var file2 = FixPath(Path.Combine(dir, sb.Name.FixFileName() + ".db"));
                 File.WriteAllText(file2, baseBlock.ToSourceBlock(codeBlockConvertOptions), encoding);
             }
+        }
+
+        private AutomationXmlConverter.ConvertOptions GetAutomationXmlOptions(BaseBlock baseBlock)
+        {
+            if (!parsedOptions.TiaGitHandlerCompatible)
+                return codeBlockConvertOptionsXml;
+
+            // TiaGitHandler removes empty children inherited from referenced types for source
+            // blocks and UDTs. Applying that normalization to DBs would drop valid declarations.
+            return new AutomationXmlConverter.ConvertOptions
+            {
+                AutomationXmlWithoutNetworksOnSclAndStlBlocks = codeBlockConvertOptionsXml.AutomationXmlWithoutNetworksOnSclAndStlBlocks,
+                WithDefaultsInInterface = codeBlockConvertOptionsXml.WithDefaultsInInterface,
+                WithReadOnlyAttributes = codeBlockConvertOptionsXml.WithReadOnlyAttributes,
+                WriteCommentAndTitleAlthoughWhenEmpty = codeBlockConvertOptionsXml.WriteCommentAndTitleAlthoughWhenEmpty,
+                IncludeOnlineViewMetadata = codeBlockConvertOptionsXml.IncludeOnlineViewMetadata,
+                RemoveOneLeadingBlankFromMultilingualText = codeBlockConvertOptionsXml.RemoveOneLeadingBlankFromMultilingualText,
+                ResetSetPoints = codeBlockConvertOptionsXml.ResetSetPoints,
+                OmitInformativeOrganizationBlockMembers = codeBlockConvertOptionsXml.OmitInformativeOrganizationBlockMembers,
+                OmitEmptyInheritedInstanceDbMembers = codeBlockConvertOptionsXml.OmitEmptyInheritedInstanceDbMembers,
+                OmitEmptyInheritedTypeChildren = baseBlock is not DataBlock,
+                IncludeFailSafeMemoryLayout = true,
+            };
         }
     }
 }
