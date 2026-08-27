@@ -28,7 +28,7 @@
 
     <ItemGroup>
         <PackageReference Include="BaseHmiTypes" Version="2026.8.5.1" />
-        <PackageReference Include="jfk-solutions.TiaFileFormat" Version="2026.8.26.1" />
+        <PackageReference Include="jfk-solutions.TiaFileFormat" Version="2026.8.27.1" />
     </ItemGroup>
 
 </Project>
