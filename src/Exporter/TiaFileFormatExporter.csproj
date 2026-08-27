@@ -24,11 +24,7 @@
     <PackageReference Include="BouncyCastle.Cryptography" Version="2.6.2" />
     <PackageReference Include="SharpCompress" Version="0.46.2" />
     <PackageReference Include="zlib.net-mutliplatform" Version="1.1.0" />
+    <PackageReference Include="jfk-solutions.TiaFileFormat" Version="2026.8.27.2" />
   </ItemGroup>
-
-    <ItemGroup>
-        <PackageReference Include="BaseHmiTypes" Version="2026.8.5.1" />
-        <PackageReference Include="jfk-solutions.TiaFileFormat" Version="2026.8.27.1" />
-    </ItemGroup>
 
 </Project>
