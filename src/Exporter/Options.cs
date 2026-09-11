@@ -31,6 +31,48 @@ namespace TiaFileFormatExporter
         [Option("network", HelpText = "Enable Network Information export.")]
         public bool NetworkInformation { get; set; }
 
+        [Option("omit-scl-stl-networks", HelpText = "Omit SCL/STL network code from PLC block Automation XML (Openness/TiaGitHandler-compatible).")]
+        public bool OmitSclStlNetworksFromAutomationXml { get; set; }
+
+        [Option("reset-setpoints", HelpText = "Normalize PLC interface SetPoint attribute values to false. Disabled by default.")]
+        public bool ResetSetPoints { get; set; }
+
+        [Option("remove-leading-multilingual-text-blank", HelpText = "Remove one leading blank from multilingual XML text (TiaGitHandler compatibility). Disabled by default.")]
+        public bool RemoveLeadingMultilingualTextBlank { get; set; }
+
+        [Option("omit-informative-ob-members", HelpText = "Omit informative OB interface members (TiaGitHandler compatibility). Disabled by default.")]
+        public bool OmitInformativeOrganizationBlockMembers { get; set; }
+
+        [Option("omit-empty-inherited-instance-db-members", HelpText = "Omit inherited instance-DB members without explicit values or Retain (TiaGitHandler compatibility). Disabled by default.")]
+        public bool OmitEmptyInheritedInstanceDbMembers { get; set; }
+
+        [Option("omit-empty-inherited-type-children", HelpText = "Do not expand inherited UDT/FB children without instance values or comments (TiaGitHandler compatibility). Disabled by default.")]
+        public bool OmitEmptyInheritedTypeChildren { get; set; }
+
+        [Option("omit-readonly-attributes", HelpText = "Omit informative/read-only Automation XML attributes (TiaGitHandler compatibility). Disabled by default.")]
+        public bool OmitReadOnlyInterfaceAttributes { get; set; }
+
+        [Option("german-mnemonics", HelpText = "Export STL/AWL using German mnemonics. The standalone default is International; TIA Portal uses its General/Application/Mnemonic user setting.")]
+        public bool GermanMnemonics { get; set; }
+
+        [Option("indexed", HelpText = "Use a supported TIA database index for lazy object loading; missing and legacy indexes fall back to sequential loading. Disabled by default.")]
+        public bool IndexedLoading { get; set; }
+
+        [Option("prioritize-large-objects", HelpText = "Start larger project objects first to reduce the tail of parallel exports. Disabled by default.")]
+        public bool PrioritizeLargeObjects { get; set; }
+
+        [Option("max-parallelism", HelpText = "Maximum number of concurrent object exports. Zero keeps the existing unbounded behavior.", Default = 0)]
+        public int MaxParallelism { get; set; }
+
+        [Option("no-cache", HelpText = "Disable the high-level converted-object cache to reduce memory consumption. Disabled by default.")]
+        public bool DisableConverterCache { get; set; }
+
+        [Option("stream-automation-xml", HelpText = "Write PLC Automation XML directly to the output stream instead of building one large string. Disabled by default.")]
+        public bool StreamAutomationXml { get; set; }
+
+        [Option("tia-git-handler-compatible", HelpText = "Opt in to TiaGitHandler-compatible PLC paths, files, and Automation XML normalization. Existing defaults are unchanged.")]
+        public bool TiaGitHandlerCompatible { get; set; }
+
         [Option("opc", HelpText = "Enable Opc export.")]
         public bool Opc { get; set; }
 
@@ -80,6 +122,6 @@ namespace TiaFileFormatExporter
         public bool NoProjectName { get; set; }
 
         [Option("replacepath", HelpText = "Replacements for path, seperated via |")]
-        public IEnumerable<string> ReplacePath { get; set; }
+        public IEnumerable<string>? ReplacePath { get; set; }
     }
 }

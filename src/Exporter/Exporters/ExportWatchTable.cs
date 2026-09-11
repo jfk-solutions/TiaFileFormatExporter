@@ -10,6 +10,9 @@ namespace TiaFileFormatExporter.Exporters
     {
         public override async Task Export(StorageBusinessObject sb, WatchTable watchTable, string dir)
         {
+            if (parsedOptions.TiaGitHandlerCompatible)
+                return;
+
             var file = FixPath(Path.Combine(dir, watchTable.Name.FixFileName() + ".csv"));
             var csv = CsvSerializer.ToCsv(watchTable.Items);
             File.WriteAllText(file, csv);

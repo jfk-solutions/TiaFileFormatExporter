@@ -11,6 +11,9 @@ namespace TiaFileFormatExporter.Exporters
 
         public override async Task Export(StorageBusinessObject sb, TiaFileFormat.Wrappers.TextLists.TextList textList, string dir)
         {
+            if (parsedOptions.TiaGitHandlerCompatible)
+                return;
+
             var file1 = FixPath(Path.Combine(dir, sb.Name.FixFileName() + ".json"));
             File.WriteAllText(file1, JsonSerializer.Serialize(textList, jsonSerializerOptions));
         }

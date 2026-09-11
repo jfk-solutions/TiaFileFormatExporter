@@ -10,6 +10,7 @@ using TiaFileFormat;
 using TiaFileFormat.Database;
 using TiaFileFormat.Database.StorageTypes;
 using TiaFileFormat.Wrappers;
+using TiaFileFormat.Wrappers.CodeBlocks;
 using TiaFileFormat.Wrappers.Converters.Code;
 using TiaFileFormatExporter;
 using TiaFileFormatExporter.Classes;
@@ -28,13 +29,14 @@ public class Program
     static string outDir;
     static string currentFile;
     public static SemaphoreSlim maxBrowserTasks;
+    static SemaphoreSlim? maxExportTasks;
     static ConcurrentDictionary<string, DateTime> fileModifiedTimeStamps = new ConcurrentDictionary<string, DateTime>();
     static string fileNameModifiedTimeStamps;
     static Dictionary<string, string> pathReplacements;
     public static Options parsedOptions;
     public static ConvertOptions convertOptions;
     public static TiaFileFormat.Wrappers.Hmi.TiaHmiProject? hmiProject;
-    public static CodeBlockToSourceBlockConverter.ConvertOptions codeBlockConvertOptions = new CodeBlockToSourceBlockConverter.ConvertOptions() { Mnemonik = TiaFileFormat.Wrappers.CodeBlocks.Mnemonic.German, Culture = new System.Globalization.CultureInfo(0x407) };
+    public static CodeBlockToSourceBlockConverter.ConvertOptions codeBlockConvertOptions = new CodeBlockToSourceBlockConverter.ConvertOptions();
     public static Encoding encoding = new UTF8Encoding(true);
     private static Dictionary<Type, List<IExporter>> exporters;
     static Lock lockObj = new Lock();
@@ -86,20 +88,61 @@ public class Program
 
         parsedOptions = parsedArgs.Value;
 
+        if (parsedOptions.MaxParallelism < 0)
+            throw new ArgumentOutOfRangeException(nameof(parsedOptions.MaxParallelism),
+                "--max-parallelism must be zero or greater.");
+
+        if (parsedOptions.TiaGitHandlerCompatible)
+        {
+            parsedOptions.PlcBlock = true;
+            parsedOptions.PlcTagTable = true;
+            parsedOptions.PlcWatchTable = true;
+            parsedOptions.TextList = true;
+            parsedOptions.OmitSclStlNetworksFromAutomationXml = true;
+            parsedOptions.RemoveLeadingMultilingualTextBlank = true;
+            parsedOptions.OmitInformativeOrganizationBlockMembers = true;
+            parsedOptions.OmitEmptyInheritedInstanceDbMembers = true;
+            parsedOptions.OmitReadOnlyInterfaceAttributes = true;
+            parsedOptions.GermanMnemonics = true;
+        }
+
         TiaFileFormat.Wrappers.Hmi.IImageUriProvider imageUriProvider = parsedOptions.Base64Images
             ? new TiaFileFormat.Wrappers.Hmi.ImageToDataUriProvider()
             : new ImageToFileUriProvider();
         highLevelObjectConverterWrapper = new HighLevelObjectConverterWrapper(imageUriProvider, new ImagesIncludingFromRtfConverter());
+        highLevelObjectConverterWrapper.CacheConvertedObjects = !parsedOptions.DisableConverterCache;
         convertOptions = new ConvertOptions();
+        maxExportTasks = parsedOptions.MaxParallelism > 0
+            ? new SemaphoreSlim(parsedOptions.MaxParallelism)
+            : null;
 
         exportTasks = new List<Task>();
+
+        ExportCodeBlock.codeBlockConvertOptionsXml.AutomationXmlWithoutNetworksOnSclAndStlBlocks =
+            parsedOptions.OmitSclStlNetworksFromAutomationXml;
+        ExportCodeBlock.codeBlockConvertOptionsXml.ResetSetPoints = parsedOptions.ResetSetPoints;
+        ExportCodeBlock.codeBlockConvertOptionsXml.RemoveOneLeadingBlankFromMultilingualText =
+            parsedOptions.RemoveLeadingMultilingualTextBlank;
+        ExportCodeBlock.codeBlockConvertOptionsXml.OmitInformativeOrganizationBlockMembers =
+            parsedOptions.OmitInformativeOrganizationBlockMembers;
+        ExportCodeBlock.codeBlockConvertOptionsXml.OmitEmptyInheritedInstanceDbMembers =
+            parsedOptions.OmitEmptyInheritedInstanceDbMembers;
+        ExportCodeBlock.codeBlockConvertOptionsXml.OmitEmptyInheritedTypeChildren =
+            parsedOptions.OmitEmptyInheritedTypeChildren;
+        ExportCodeBlock.codeBlockConvertOptionsXml.WithReadOnlyAttributes =
+            !parsedOptions.OmitReadOnlyInterfaceAttributes;
+        codeBlockConvertOptions.Mnemonik = parsedOptions.GermanMnemonics
+            ? TiaFileFormat.Wrappers.CodeBlocks.Mnemonic.German
+            : null;
 
         var files = parsedArgs.Value.FileNames;
         outDir = parsedArgs.Value.OutDir;
 
+        Directory.CreateDirectory(outDir);
+
 
         fileNameModifiedTimeStamps = Path.Combine(outDir, "fileModifiedTimeStamps.json");
-        if (File.Exists(fileNameModifiedTimeStamps))
+        if (!parsedOptions.TiaGitHandlerCompatible && File.Exists(fileNameModifiedTimeStamps))
         {
             fileModifiedTimeStamps = JsonSerializer.Deserialize<ConcurrentDictionary<string, DateTime>>(File.ReadAllText(fileNameModifiedTimeStamps));
         }
@@ -118,8 +161,14 @@ public class Program
                 file = file.Substring(1);
             currentFile = file;
 
-            var tfp = TiaFileProvider.CreateFromSingleFile(file);
-            var database = TiaDatabaseFile.Load(tfp);
+            using var tfp = TiaFileProvider.CreateFromSingleFile(file);
+            using var database = TiaDatabaseFile.Load(tfp, parsedOptions.IndexedLoading
+                ? TiaDatabaseLoadMode.Indexed
+                : TiaDatabaseLoadMode.Sequential);
+            var editingCulture = database.ProjectEditingCulture;
+            codeBlockConvertOptions.Culture = editingCulture == null
+                ? null
+                : System.Globalization.CultureInfo.GetCultureInfo(editingCulture.LCID);
             hmiProject = new TiaFileFormat.Wrappers.Hmi.TiaHmiProject(database, highLevelObjectConverterWrapper);
 
             //var sw2 = new Stopwatch();
@@ -155,7 +204,12 @@ public class Program
             }
 
             if (database.RootObject.StoreObjectIds.TryGetValue("Project", out var prj))
-                WalkProject((StorageBusinessObject)prj.StorageObject, prjNm + "Project");
+            {
+                if (parsedOptions.TiaGitHandlerCompatible)
+                    WalkTiaGitHandlerProject((StorageBusinessObject)prj.StorageObject);
+                else
+                    WalkProject((StorageBusinessObject)prj.StorageObject, prjNm + "Project");
+            }
             if (parsedOptions.ExportLib && database.RootObject.StoreObjectIds.TryGetValue("Library", out var lb))
                 WalkProject((StorageBusinessObject)lb.StorageObject, prjNm + "Library");
 
@@ -169,21 +223,60 @@ public class Program
 
             sw.Stop();
             Console.WriteLine();
+            Console.WriteLine($"Exported: {exportedCount}, skipped: {skippedCount}, exceptions: {exceptionCount}");
             Console.WriteLine("Export took: " + sw.ToString());
 
-            File.WriteAllText(fileNameModifiedTimeStamps, JsonSerializer.Serialize(fileModifiedTimeStamps, new JsonSerializerOptions() { WriteIndented = true }));
+            if (!parsedOptions.TiaGitHandlerCompatible)
+                File.WriteAllText(fileNameModifiedTimeStamps, JsonSerializer.Serialize(fileModifiedTimeStamps, new JsonSerializerOptions() { WriteIndented = true }));
         }
     }
 
     private static void WalkProject(StorageBusinessObject sb, string path)
     {
         ExportObject(sb, path); //?.Wait(); //uncomment to walk single objects (for debug)
-        foreach (var o in sb.ProjectTreeChildren)
+        var children = parsedOptions.PrioritizeLargeObjects
+            ? sb.ProjectTreeChildren.OrderByDescending(child => child.Header?.StorageObjectLength ?? 0)
+            : sb.ProjectTreeChildren;
+        foreach (var o in children)
             WalkProject(o, path + "/" + sb.ProcessedName);
     }
 
+    private static void WalkTiaGitHandlerProject(StorageBusinessObject root)
+    {
+        if (TiaGitHandlerCompatibility.IsControllerTarget(root))
+        {
+            var controllerPath = TiaGitHandlerCompatibility.GetControllerPath(root);
+            var children = OrderProjectChildren(root.ProjectTreeChildren);
+            foreach (var child in children)
+                WalkTiaGitHandlerNode(child, controllerPath);
+            return;
+        }
+
+        foreach (var child in OrderProjectChildren(root.ProjectTreeChildren))
+            WalkTiaGitHandlerProject(child);
+    }
+
+    private static void WalkTiaGitHandlerNode(StorageBusinessObject storageObject, string parentPath)
+    {
+        if (TiaGitHandlerCompatibility.ShouldSkipSubtree(storageObject))
+            return;
+
+        var path = TiaGitHandlerCompatibility.GetChildPath(storageObject, parentPath);
+        ExportObject(storageObject, path);
+        foreach (var child in OrderProjectChildren(storageObject.ProjectTreeChildren))
+            WalkTiaGitHandlerNode(child, path);
+    }
+
+    private static IEnumerable<StorageBusinessObject> OrderProjectChildren(
+        IEnumerable<StorageBusinessObject> children) => parsedOptions.PrioritizeLargeObjects
+        ? children.OrderByDescending(child => child.Header?.StorageObjectLength ?? 0)
+        : children;
+
     private static Task? ExportObject(StorageBusinessObject sb, string path)
     {
+        if (parsedOptions.TiaGitHandlerCompatible && TiaGitHandlerCompatibility.IsForceTable(sb))
+            return QueueForceTableExport(sb, path);
+
         if (highLevelObjectConverterWrapper.CouldConvert(sb))
         {
             var highLevelObjectType = highLevelObjectConverterWrapper.GetHighLevelObjectType(sb);
@@ -211,9 +304,17 @@ public class Program
             Interlocked.Increment(ref runningTasks);
             var task = Task.Run(async () =>
             {
+                if (maxExportTasks != null)
+                    await maxExportTasks.WaitAsync();
                 try
                 {
                     var highLevelObject = highLevelObjectConverterWrapper.Convert(sb, convertOptions);
+                    if (parsedOptions.TiaGitHandlerCompatible &&
+                        highLevelObject is BaseBlock { IsKowHowProtected: true })
+                    {
+                        Interlocked.Increment(ref skippedCount);
+                        return;
+                    }
                     if (highLevelObject != null)
                     {
                         if (exporters.TryGetValue(highLevelObject.GetType(), out var exporter))
@@ -228,13 +329,13 @@ public class Program
                             {
                                 if (fileModifiedTimeStamps.TryGetValue(nm, out var dt) && dt == lastModified)
                                 {
-                                    skippedCount++;
+                                    Interlocked.Increment(ref skippedCount);
                                     return;
                                 }
                                 fileModifiedTimeStamps[nm] = lastModified.Value;
                             }
 
-                            exportedCount++;
+                            Interlocked.Increment(ref exportedCount);
 
                             Directory.CreateDirectory(ReplacePaths(dir));
 
@@ -247,25 +348,28 @@ public class Program
                     lock (lockObj)
                     {
                         File.AppendAllText("D:\\err.txt", sb.Header.StoreObjectId.ToString() + "\r\n\r\n" + ex.ToString() + "\r\n\r\n");
-                        exceptionCount++;
                     }
+                    Interlocked.Increment(ref exceptionCount);
                 }
-
-                Interlocked.Decrement(ref runningTasks);
-                lock (exportTasks)
+                finally
                 {
+                    maxExportTasks?.Release();
+                    Interlocked.Decrement(ref runningTasks);
                     if (!Console.IsOutputRedirected)
                     {
-                        Console.SetCursorPosition(2, 2);
-                        Console.Write("file: " + currentFile + "           ");
-                        Console.SetCursorPosition(2, 3);
-                        Console.Write("export tasks: " + runningTasks + " todo from " + exportTasks.Count + "            ");
-                        Console.SetCursorPosition(5, 4);
-                        Console.Write("exported: " + exportedCount + "           ");
-                        Console.SetCursorPosition(5, 5);
-                        Console.Write("skipped : " + skippedCount + "           ");
-                        Console.SetCursorPosition(5, 6);
-                        Console.Write("exceptions: " + exceptionCount + "           ");
+                        lock (exportTasks)
+                        {
+                            Console.SetCursorPosition(2, 2);
+                            Console.Write("file: " + currentFile + "           ");
+                            Console.SetCursorPosition(2, 3);
+                            Console.Write("export tasks: " + runningTasks + " todo from " + exportTasks.Count + "            ");
+                            Console.SetCursorPosition(5, 4);
+                            Console.Write("exported: " + exportedCount + "           ");
+                            Console.SetCursorPosition(5, 5);
+                            Console.Write("skipped : " + skippedCount + "           ");
+                            Console.SetCursorPosition(5, 6);
+                            Console.Write("exceptions: " + exceptionCount + "           ");
+                        }
                     }
                 }
             });
@@ -276,6 +380,37 @@ public class Program
             return task;
         }
         return null;
+    }
+
+    private static Task QueueForceTableExport(StorageBusinessObject storageObject, string path)
+    {
+        Interlocked.Increment(ref runningTasks);
+        var task = Task.Run(async () =>
+        {
+            if (maxExportTasks != null)
+                await maxExportTasks.WaitAsync();
+            try
+            {
+                var directory = ReplacePaths(Path.Combine(outDir, path).FixPath());
+                TiaGitHandlerCompatibility.WriteForceTable(storageObject, directory);
+                Interlocked.Increment(ref exportedCount);
+            }
+            catch (Exception ex)
+            {
+                lock (lockObj)
+                    File.AppendAllText("D:\\err.txt", storageObject.Header.StoreObjectId +
+                        "\r\n\r\n" + ex + "\r\n\r\n");
+                Interlocked.Increment(ref exceptionCount);
+            }
+            finally
+            {
+                maxExportTasks?.Release();
+                Interlocked.Decrement(ref runningTasks);
+            }
+        });
+        lock (exportTasks)
+            exportTasks.Add(task);
+        return task;
     }
 
     public static string ReplacePaths(string path)
