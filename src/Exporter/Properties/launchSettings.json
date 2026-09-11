@@ -2,7 +2,7 @@
   "profiles": {
     "TiaFileFormatExporter": {
       "commandName": "Project",
-      "commandLineArgs": "--plcblock --out \"d:\\export\" \"D:\\tia\\aa\\aa.ap20\" \"D:\\tia\\bb\\bb.ap20\""
+      "commandLineArgs": "--plcblock --out \"c:\\temp\\export\" \"C:\\Data\\test\\tia\\ECar_Demo_UBP_UCP_PC_Features_VoT_V20_20250510_1818.zap20\""
     }
   }
 }
