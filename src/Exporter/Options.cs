@@ -10,6 +10,12 @@ namespace TiaFileFormatExporter
         [Option("all", HelpText = "Enable All export.")]
         public bool All { get; set; }
 
+        [Option("aml", HelpText = "Export project devices as AutomationML.")]
+        public bool Aml { get; set; }
+
+        [Option("xref", HelpText = "Export project cross-references as JSON.")]
+        public bool Xref { get; set; }
+
         [Option("plcblock", HelpText = "Enable PlcBlock export.")]
         public bool PlcBlock { get; set; }
 

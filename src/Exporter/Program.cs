@@ -161,6 +161,12 @@ public class Program
 
             await Task.WhenAll(exportTasks);
 
+            var projectExportDir = ReplacePaths(Path.Combine(outDir, prjNm + "Project").FixPath());
+            if (parsedOptions.Aml || parsedOptions.All)
+                await ExportProjectData.ExportAml(database, projectExportDir);
+            if (parsedOptions.Xref || parsedOptions.All)
+                await ExportProjectData.ExportXref(database, projectExportDir);
+
             sw.Stop();
             Console.WriteLine();
             Console.WriteLine("Export took: " + sw.ToString());
