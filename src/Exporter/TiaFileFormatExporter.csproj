@@ -18,8 +18,8 @@
     <PackageReference Include="ClosedXML" Version="0.105.1" />
     <PackageReference Include="CommandLineParser" Version="2.9.1" />
     <PackageReference Include="CsvHelper" Version="33.1.0" />
-    <PackageReference Include="Magick.NET-Q16-AnyCPU" Version="14.17.1" />
-    <PackageReference Include="Magick.NET.Core" Version="14.17.1" />
+    <PackageReference Include="Magick.NET-Q16-AnyCPU" Version="14.17.2" />
+    <PackageReference Include="Magick.NET.Core" Version="14.17.2" />
     <PackageReference Include="RtfDomParser" Version="7.0.0" />
     <PackageReference Include="BouncyCastle.Cryptography" Version="2.7.0" />
     <PackageReference Include="SharpCompress" Version="0.50.4" />
@@ -27,8 +27,8 @@
   </ItemGroup>
 
     <ItemGroup>
-        <PackageReference Include="BaseHmiTypes" Version="2026.8.5.1" />
-        <PackageReference Include="jfk-solutions.TiaFileFormat" Version="2026.9.11.1" />
+        <PackageReference Include="BaseHmiTypes" Version="2026.10.2.1" />
+        <PackageReference Include="jfk-solutions.TiaFileFormat" Version="2026.10.2.1" />
     </ItemGroup>
 
 </Project>
