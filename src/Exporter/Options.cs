@@ -67,6 +67,9 @@ namespace TiaFileFormatExporter
         [Option("no-cache", HelpText = "Disable the high-level converted-object cache to reduce memory consumption. Disabled by default.")]
         public bool DisableConverterCache { get; set; }
 
+        [Option("no-segment-cache", HelpText = "Read indexed blob segment buffers without retaining payloads. Reduces memory but can increase export time; requires a compatible library version.")]
+        public bool DisableSegmentCache { get; set; }
+
         [Option("stream-automation-xml", HelpText = "Write PLC Automation XML directly to the output stream instead of building one large string. Disabled by default.")]
         public bool StreamAutomationXml { get; set; }
 

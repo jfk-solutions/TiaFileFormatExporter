@@ -70,6 +70,9 @@ TiaFileFormatExporter.exe "D:\path\Project.ap19" `
 - `--max-parallelism <n>` limits concurrent object exports. `0` preserves the existing unbounded
   behavior.
 - `--no-cache` disables the converted-object cache to reduce retained memory.
+- `--no-segment-cache` additionally reduces retained blob buffers when using `--indexed`
+  and a compatible library version. Segment data is reread on demand, so this trades export
+  speed for a smaller memory footprint. Sequential loading retains its existing behavior.
 - `--stream-automation-xml` writes PLC XML directly to the destination stream instead of first
   constructing a complete in-memory string.
 

@@ -11,6 +11,7 @@ namespace TiaFileFormatExporter.Exporters
     public class ExportAlarmList : BaseExporter<AlarmList>
     {
         private static JsonSerializerOptions jsonSerializerOptions = new JsonSerializerOptions() { WriteIndented = true };
+        private static readonly Lazy<byte[]> emptyWorkbook = new(CreateEmptyWorkbook);
 
         public override async Task Export(StorageBusinessObject sb, AlarmList alarmList, string dir)
         {
@@ -18,6 +19,25 @@ namespace TiaFileFormatExporter.Exporters
             File.WriteAllText(file1, JsonSerializer.Serialize(alarmList, jsonSerializerOptions));
 
             var file2 = FixPath(Path.Combine(dir, sb.Name.FixFileName() + ".xlsx"));
+            if (alarmList.Alarms.Count == 0)
+            {
+                await File.WriteAllBytesAsync(file2, emptyWorkbook.Value);
+                return;
+            }
+
+            using var output = File.Create(file2);
+            WriteWorkbook(alarmList, output);
+        }
+
+        private static byte[] CreateEmptyWorkbook()
+        {
+            using var output = new MemoryStream();
+            WriteWorkbook(new AlarmList { Alarms = new List<Alarm>() }, output);
+            return output.ToArray();
+        }
+
+        private static void WriteWorkbook(AlarmList alarmList, Stream output)
+        {
             using (var workbook = new XLWorkbook())
             {
                 workbook.CustomProperties.Add("TIA_Version", "2.1");
@@ -94,7 +114,7 @@ namespace TiaFileFormatExporter.Exporters
                             worksheet.Cell(row, addiColumn[l] + 8).Value = add9;
                     }
                 }
-                workbook.SaveAs(file2);
+                workbook.SaveAs(output);
             }
         }
     }

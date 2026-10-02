@@ -39,6 +39,11 @@ public class Program
     public static CodeBlockToSourceBlockConverter.ConvertOptions codeBlockConvertOptions = new CodeBlockToSourceBlockConverter.ConvertOptions();
     public static Encoding encoding = new UTF8Encoding(true);
     private static Dictionary<Type, List<IExporter>> exporters;
+    // Keep compatibility with library packages released before segment cache control was added.
+    private static readonly Func<TiaFileProvider, TiaDatabaseLoadMode, bool, TiaDatabaseFile>? loadWithSegmentCaching =
+        typeof(TiaDatabaseFile).GetMethod(nameof(TiaDatabaseFile.Load),
+            [typeof(TiaFileProvider), typeof(TiaDatabaseLoadMode), typeof(bool)])?
+            .CreateDelegate<Func<TiaFileProvider, TiaDatabaseLoadMode, bool, TiaDatabaseFile>>();
     static Lock lockObj = new Lock();
 
     private async static Task Main(string[] args)
@@ -162,9 +167,14 @@ public class Program
             currentFile = file;
 
             using var tfp = TiaFileProvider.CreateFromSingleFile(file);
-            using var database = TiaDatabaseFile.Load(tfp, parsedOptions.IndexedLoading
+            var loadMode = parsedOptions.IndexedLoading
                 ? TiaDatabaseLoadMode.Indexed
-                : TiaDatabaseLoadMode.Sequential);
+                : TiaDatabaseLoadMode.Sequential;
+            if (parsedOptions.DisableSegmentCache && loadWithSegmentCaching == null)
+                throw new NotSupportedException("Blob segment cache control requires a newer TiaFileFormat library.");
+            using var database = loadWithSegmentCaching == null
+                ? TiaDatabaseFile.Load(tfp, loadMode)
+                : loadWithSegmentCaching(tfp, loadMode, !parsedOptions.DisableSegmentCache);
             var editingCulture = database.ProjectEditingCulture;
             codeBlockConvertOptions.Culture = editingCulture == null
                 ? null
