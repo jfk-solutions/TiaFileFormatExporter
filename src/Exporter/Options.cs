@@ -4,7 +4,7 @@ namespace TiaFileFormatExporter
 {
     public class Options
     {
-        [Option("lib", HelpText = "Enable export of Library objects.")]
+        [Option("lib", HelpText = "Include the library embedded in a project. Standalone AL/ZAL libraries are exported automatically; select object types or use --all.")]
         public bool ExportLib { get; set; }
 
         [Option("all", HelpText = "Enable All export.")]

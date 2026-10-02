@@ -14,6 +14,20 @@ dotnet TiaFileFormatExporter.dll "TiaProject.ap20" --plcblock --out "d:\export"
 
 The TIA Project can be in a Folder, or you can also directly export a compressed project.
 
+Unpacked global libraries (`.alxx`) and archived global libraries (`.zalxx`) are
+also accepted for every TIA version supported by `TiaFileFormat`. A standalone
+library is exported automatically; select the desired object types as usual:
+
+```powershell
+dotnet TiaFileFormatExporter.dll "GlobalLibrary.zal20" --plcblock --out "D:\export"
+dotnet TiaFileFormatExporter.dll "GlobalLibrary.al15_1" --all --out "D:\export"
+```
+
+Output is written below `<input name>/Library`. For an unpacked library, keep
+the `.alxx` file with its accompanying `System` directory. `--lib` includes the
+library embedded in a project, and `--all` includes both project and library
+objects. The archive loader has no version-specific AL/ZAL extension whitelist.
+
 ## TiaGitHandler-compatible export
 
 Compatibility is opt-in, so existing invocations and output defaults remain unchanged. The

@@ -210,7 +210,9 @@ public class Program
                 else
                     WalkProject((StorageBusinessObject)prj.StorageObject, prjNm + "Project");
             }
-            if (parsedOptions.ExportLib && database.RootObject.StoreObjectIds.TryGetValue("Library", out var lb))
+            // A global library is the input itself; --lib opts in to the library embedded in a project.
+            if ((parsedOptions.ExportLib || parsedOptions.All || database.ProjectRoot == null) &&
+                database.RootObject.StoreObjectIds.TryGetValue("Library", out var lb))
                 WalkProject((StorageBusinessObject)lb.StorageObject, prjNm + "Library");
 
             await Task.WhenAll(exportTasks);
