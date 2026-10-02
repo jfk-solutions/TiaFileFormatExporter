@@ -29,7 +29,7 @@ public class Program
     static string outDir;
     static string currentFile;
     public static SemaphoreSlim maxBrowserTasks;
-    static SemaphoreSlim? maxExportTasks;
+    static BoundedExportQueue? exportQueue;
     static ConcurrentDictionary<string, DateTime> fileModifiedTimeStamps = new ConcurrentDictionary<string, DateTime>();
     static string fileNameModifiedTimeStamps;
     static Dictionary<string, string> pathReplacements;
@@ -117,11 +117,6 @@ public class Program
         highLevelObjectConverterWrapper = new HighLevelObjectConverterWrapper(imageUriProvider, new ImagesIncludingFromRtfConverter());
         highLevelObjectConverterWrapper.CacheConvertedObjects = !parsedOptions.DisableConverterCache;
         convertOptions = new ConvertOptions();
-        maxExportTasks = parsedOptions.MaxParallelism > 0
-            ? new SemaphoreSlim(parsedOptions.MaxParallelism)
-            : null;
-
-        exportTasks = new List<Task>();
 
         ExportCodeBlock.codeBlockConvertOptionsXml.AutomationXmlWithoutNetworksOnSclAndStlBlocks =
             parsedOptions.OmitSclStlNetworksFromAutomationXml;
@@ -154,6 +149,7 @@ public class Program
 
         foreach (var f in files)
         {
+            exportTasks = new List<Task>();
             runningTasks = 0;
             exportedCount = 0;
             skippedCount = 0;
@@ -181,6 +177,11 @@ public class Program
                 : System.Globalization.CultureInfo.GetCultureInfo(editingCulture.LCID);
             hmiProject = new TiaFileFormat.Wrappers.Hmi.TiaHmiProject(database, highLevelObjectConverterWrapper);
 
+            await using var queue = parsedOptions.MaxParallelism > 0
+                ? new BoundedExportQueue(parsedOptions.MaxParallelism)
+                : null;
+            exportQueue = queue;
+
             //var sw2 = new Stopwatch();
             //database.ParseAllObjects();
             //sw2.Stop();
@@ -197,35 +198,40 @@ public class Program
                 var imgs = database.FindStorageBusinessObjectsWithChildType<HmiInternalImageAttributes>();
                 var duplicateNames = new HashSet<string>();
 
-                var imageTasks = new List<Task>();
                 foreach (var i in imgs)
                 {
                     //TODO: maybe handle duplicated image names in some way!
                     if (!duplicateNames.Contains(i.ProcessedName))
                     {
                         duplicateNames.Add(i.ProcessedName);
-                        imageTasks.Add(ExportObject(i, prjNm + "Images")!);
+                        await ExportObject(i, prjNm + "Images");
                     }
                 }
                 if (parsedOptions.Snapshot)
                 {
-                    await Task.WhenAll(imageTasks);
+                    if (queue != null)
+                        await queue.DrainAsync();
+                    else
+                        await Task.WhenAll(exportTasks);
                 }
             }
 
             if (database.RootObject.StoreObjectIds.TryGetValue("Project", out var prj))
             {
                 if (parsedOptions.TiaGitHandlerCompatible)
-                    WalkTiaGitHandlerProject((StorageBusinessObject)prj.StorageObject);
+                    await WalkTiaGitHandlerProject((StorageBusinessObject)prj.StorageObject);
                 else
-                    WalkProject((StorageBusinessObject)prj.StorageObject, prjNm + "Project");
+                    await WalkProject((StorageBusinessObject)prj.StorageObject, prjNm + "Project");
             }
             // A global library is the input itself; --lib opts in to the library embedded in a project.
             if ((parsedOptions.ExportLib || parsedOptions.All || database.ProjectRoot == null) &&
                 database.RootObject.StoreObjectIds.TryGetValue("Library", out var lb))
-                WalkProject((StorageBusinessObject)lb.StorageObject, prjNm + "Library");
+                await WalkProject((StorageBusinessObject)lb.StorageObject, prjNm + "Library");
 
-            await Task.WhenAll(exportTasks);
+            if (queue != null)
+                await queue.CompleteAsync();
+            else
+                await Task.WhenAll(exportTasks);
 
             var projectExportDir = ReplacePaths(Path.Combine(outDir, prjNm + "Project").FixPath());
             if (parsedOptions.Aml || parsedOptions.All)
@@ -243,40 +249,40 @@ public class Program
         }
     }
 
-    private static void WalkProject(StorageBusinessObject sb, string path)
+    private static async Task WalkProject(StorageBusinessObject sb, string path)
     {
-        ExportObject(sb, path); //?.Wait(); //uncomment to walk single objects (for debug)
+        await ExportObject(sb, path);
         var children = parsedOptions.PrioritizeLargeObjects
             ? sb.ProjectTreeChildren.OrderByDescending(child => child.Header?.StorageObjectLength ?? 0)
             : sb.ProjectTreeChildren;
         foreach (var o in children)
-            WalkProject(o, path + "/" + sb.ProcessedName);
+            await WalkProject(o, path + "/" + sb.ProcessedName);
     }
 
-    private static void WalkTiaGitHandlerProject(StorageBusinessObject root)
+    private static async Task WalkTiaGitHandlerProject(StorageBusinessObject root)
     {
         if (TiaGitHandlerCompatibility.IsControllerTarget(root))
         {
             var controllerPath = TiaGitHandlerCompatibility.GetControllerPath(root);
             var children = OrderProjectChildren(root.ProjectTreeChildren);
             foreach (var child in children)
-                WalkTiaGitHandlerNode(child, controllerPath);
+                await WalkTiaGitHandlerNode(child, controllerPath);
             return;
         }
 
         foreach (var child in OrderProjectChildren(root.ProjectTreeChildren))
-            WalkTiaGitHandlerProject(child);
+            await WalkTiaGitHandlerProject(child);
     }
 
-    private static void WalkTiaGitHandlerNode(StorageBusinessObject storageObject, string parentPath)
+    private static async Task WalkTiaGitHandlerNode(StorageBusinessObject storageObject, string parentPath)
     {
         if (TiaGitHandlerCompatibility.ShouldSkipSubtree(storageObject))
             return;
 
         var path = TiaGitHandlerCompatibility.GetChildPath(storageObject, parentPath);
-        ExportObject(storageObject, path);
+        await ExportObject(storageObject, path);
         foreach (var child in OrderProjectChildren(storageObject.ProjectTreeChildren))
-            WalkTiaGitHandlerNode(child, path);
+            await WalkTiaGitHandlerNode(child, path);
     }
 
     private static IEnumerable<StorageBusinessObject> OrderProjectChildren(
@@ -284,10 +290,13 @@ public class Program
         ? children.OrderByDescending(child => child.Header?.StorageObjectLength ?? 0)
         : children;
 
-    private static Task? ExportObject(StorageBusinessObject sb, string path)
+    private static async Task ExportObject(StorageBusinessObject sb, string path)
     {
         if (parsedOptions.TiaGitHandlerCompatible && TiaGitHandlerCompatibility.IsForceTable(sb))
-            return QueueForceTableExport(sb, path);
+        {
+            await QueueForceTableExport(sb, path);
+            return;
+        }
 
         if (highLevelObjectConverterWrapper.CouldConvert(sb))
         {
@@ -311,13 +320,11 @@ public class Program
                 (highLevelObjectType == HighLevelObjectType.NetworkInformation && !parsedOptions.NetworkInformation && !parsedOptions.All) ||
                 (highLevelObjectType == HighLevelObjectType.PlcOpcServerInterface && !parsedOptions.Opc && !parsedOptions.All) ||
                 (highLevelObjectType == HighLevelObjectType.PlcOpcClientInterface && !parsedOptions.Opc && !parsedOptions.All))
-                return Task.CompletedTask;
+                return;
 
             Interlocked.Increment(ref runningTasks);
-            var task = Task.Run(async () =>
+            await SubmitExport(async () =>
             {
-                if (maxExportTasks != null)
-                    await maxExportTasks.WaitAsync();
                 try
                 {
                     var highLevelObject = highLevelObjectConverterWrapper.Convert(sb, convertOptions);
@@ -365,16 +372,15 @@ public class Program
                 }
                 finally
                 {
-                    maxExportTasks?.Release();
                     Interlocked.Decrement(ref runningTasks);
                     if (!Console.IsOutputRedirected)
                     {
-                        lock (exportTasks)
+                        lock (lockObj)
                         {
                             Console.SetCursorPosition(2, 2);
                             Console.Write("file: " + currentFile + "           ");
                             Console.SetCursorPosition(2, 3);
-                            Console.Write("export tasks: " + runningTasks + " todo from " + exportTasks.Count + "            ");
+                            Console.Write("export tasks: " + runningTasks + " todo from " + (exportQueue?.SubmittedCount ?? exportTasks.Count) + "            ");
                             Console.SetCursorPosition(5, 4);
                             Console.Write("exported: " + exportedCount + "           ");
                             Console.SetCursorPosition(5, 5);
@@ -385,22 +391,14 @@ public class Program
                     }
                 }
             });
-            lock (exportTasks)
-            {
-                exportTasks.Add(task);
-            }
-            return task;
         }
-        return null;
     }
 
-    private static Task QueueForceTableExport(StorageBusinessObject storageObject, string path)
+    private static async Task QueueForceTableExport(StorageBusinessObject storageObject, string path)
     {
         Interlocked.Increment(ref runningTasks);
-        var task = Task.Run(async () =>
+        await SubmitExport(async () =>
         {
-            if (maxExportTasks != null)
-                await maxExportTasks.WaitAsync();
             try
             {
                 var directory = ReplacePaths(Path.Combine(outDir, path).FixPath());
@@ -416,13 +414,17 @@ public class Program
             }
             finally
             {
-                maxExportTasks?.Release();
                 Interlocked.Decrement(ref runningTasks);
             }
         });
-        lock (exportTasks)
-            exportTasks.Add(task);
-        return task;
+    }
+
+    private static async ValueTask SubmitExport(Func<Task> work)
+    {
+        if (exportQueue != null)
+            await exportQueue.EnqueueAsync(work);
+        else
+            exportTasks.Add(Task.Run(work));
     }
 
     public static string ReplacePaths(string path)

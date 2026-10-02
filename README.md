@@ -68,7 +68,8 @@ TiaFileFormatExporter.exe "D:\path\Project.ap19" `
   projects.
 - `--prioritize-large-objects` starts larger project objects earlier to reduce the parallel tail.
 - `--max-parallelism <n>` limits concurrent object exports. `0` preserves the existing unbounded
-  behavior.
+  behavior. Positive values use a fixed worker pool and a bounded queue, so traversal waits
+  for capacity rather than allocating a waiting task for every object.
 - `--no-cache` disables the converted-object cache to reduce retained memory.
 - `--no-segment-cache` additionally reduces retained blob buffers when using `--indexed`
   and a compatible library version. Segment data is reread on demand, so this trades export
