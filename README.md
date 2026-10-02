@@ -110,6 +110,9 @@ locations, addresses, and completeness diagnostics, with catalog IDs linking rec
 It uses the project's XRef database when available and otherwise scans project data;
 the JSON records the source and any fallback diagnostics. Both exports run with
 `--all`, honor `--noprojectname` and `--replacepath`, and are regenerated on each run.
+With a compatible library version, cross-reference export avoids catalog query indexes
+and retained relation records. It prepares identities and counts, then streams JSON
+directly from its SQLite snapshot. Older versions use the catalog export path.
 
 # License 
 

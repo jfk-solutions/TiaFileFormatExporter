@@ -9,6 +9,10 @@ namespace TiaFileFormatExporter.Exporters;
 
 public static class ExportProjectData
 {
+    // Preserve support for released packages while using the export-only API when available.
+    private static readonly Func<TiaDatabaseFile, Stream, object>? writeXrefExport =
+        typeof(CrossReferenceCatalogBuilder).GetMethod("WriteExportJson", [typeof(TiaDatabaseFile), typeof(Stream)])?
+            .CreateDelegate<Func<TiaDatabaseFile, Stream, object>>();
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
         WriteIndented = true,
@@ -37,8 +41,22 @@ public static class ExportProjectData
 
     public static async Task ExportXref(TiaDatabaseFile database, string directory)
     {
-        var catalog = CrossReferenceCatalogBuilder.Build(database);
         Directory.CreateDirectory(directory);
+        if (writeXrefExport != null)
+        {
+            await using var output = File.Create(Path.Combine(directory, "CrossReferences.json"));
+            var summary = writeXrefExport(database, output);
+            var type = summary.GetType();
+            var objectCount = (int)type.GetProperty("ObjectCount")!.GetValue(summary)!;
+            var relationCount = (int)type.GetProperty("RelationCount")!.GetValue(summary)!;
+            var dataSource = (CrossReferenceDataSource)type.GetProperty("DataSource")!.GetValue(summary)!;
+            var diagnostics = (IReadOnlyList<CrossReferenceDiagnostic>)type.GetProperty("Diagnostics")!.GetValue(summary)!;
+            Console.WriteLine($"XRef: {objectCount} objects, {relationCount} relations ({dataSource}).");
+            foreach (var diagnostic in diagnostics)
+                Console.Error.WriteLine($"XRef {diagnostic.Code}: {diagnostic.Message}");
+            return;
+        }
+        var catalog = CrossReferenceCatalogBuilder.Build(database);
         // Use catalog IDs for links; storage objects and parent/child references form cycles.
         await WriteJson(Path.Combine(directory, "CrossReferences.json"), new
         {
