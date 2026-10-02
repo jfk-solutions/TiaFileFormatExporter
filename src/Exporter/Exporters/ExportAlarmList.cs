@@ -37,7 +37,7 @@ namespace TiaFileFormatExporter.Exporters
                 var infoColumn = new Dictionary<CultureInfo, int>();
                 var addiColumn = new Dictionary<CultureInfo, int>();
 
-                var langs = alarmList.Alarms.SelectMany(x => x.AlarmText.Texts.Keys).Where(x => x > 0).Distinct().Select(x => new CultureInfo(x)).ToList();
+                var langs = alarmList.Alarms.SelectMany(x => x.AlarmText?.Texts?.Keys ?? Enumerable.Empty<int>()).Where(x => x > 0).Distinct().Select(x => new CultureInfo(x)).ToList();
                 var i = 8;
                 foreach (var l in langs)
                 {

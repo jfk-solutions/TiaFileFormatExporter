@@ -347,7 +347,7 @@ public class Program
                 {
                     lock (lockObj)
                     {
-                        File.AppendAllText("D:\\err.txt", sb.Header.StoreObjectId.ToString() + "\r\n\r\n" + ex.ToString() + "\r\n\r\n");
+                        File.AppendAllText(Path.Combine(outDir, "export-errors.log"), (sb.Header?.StoreObjectId?.ToString() ?? "<synthetic object>") + "\r\n\r\n" + ex.ToString() + "\r\n\r\n");
                     }
                     Interlocked.Increment(ref exceptionCount);
                 }
@@ -398,7 +398,7 @@ public class Program
             catch (Exception ex)
             {
                 lock (lockObj)
-                    File.AppendAllText("D:\\err.txt", storageObject.Header.StoreObjectId +
+                    File.AppendAllText(Path.Combine(outDir, "export-errors.log"), (storageObject.Header?.StoreObjectId?.ToString() ?? "<synthetic object>") +
                         "\r\n\r\n" + ex + "\r\n\r\n");
                 Interlocked.Increment(ref exceptionCount);
             }

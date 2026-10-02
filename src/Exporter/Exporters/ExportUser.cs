@@ -11,7 +11,10 @@ namespace TiaFileFormatExporter.Exporters
 
         public override async Task Export(StorageBusinessObject sb, TiaFileFormat.Wrappers.UserManagement.User user, string dir)
         {
-            var file1 = FixPath(Path.Combine(dir, sb.Name.FixFileName() + ".json"));
+            var name = string.IsNullOrWhiteSpace(user.Name) ? sb.ProcessedName : user.Name;
+            if (string.IsNullOrWhiteSpace(name))
+                name = sb.Header.StoreObjectId.ToString();
+            var file1 = FixPath(Path.Combine(dir, name.FixFileName() + ".json"));
             File.WriteAllText(file1, JsonSerializer.Serialize(user, jsonSerializerOptions));
         }
     }
