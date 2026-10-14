@@ -28,8 +28,8 @@
   </ItemGroup>
 
     <ItemGroup Condition="'$(UseLocalLibraries)' != 'true'">
-        <PackageReference Include="BaseHmiTypes" Version="2026.10.14.1" />
-        <PackageReference Include="jfk-solutions.TiaFileFormat" Version="2026.10.14.2" />
+        <PackageReference Include="BaseHmiTypes" Version="2026.10.14.2" />
+        <PackageReference Include="jfk-solutions.TiaFileFormat" Version="2026.10.14.3" />
     </ItemGroup>
 
     <ItemGroup Condition="'$(UseLocalLibraries)' == 'true'">
