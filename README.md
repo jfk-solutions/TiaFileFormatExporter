@@ -8,6 +8,12 @@ But you can also use the C# objects directly.
 
 The tool should work on every OS where dotnet is supported.
 
+The default build uses the published NuGet libraries. To test changes in the
+adjacent library checkouts before their next package release, build with
+`dotnet build src/Exporter/TiaFileFormatExporter.csproj -p:UseLocalLibraries=true -p:UseLocalBaseHmiTypes=true`.
+For a full license, supply its path with `-p:TiaLicensePath="C:\path\to\license.license"`;
+the build copies it to the output as `tiafileformat.license` instead of the bundled demo license.
+
 # How to use
 
 dotnet TiaFileFormatExporter.dll "TiaProject.ap20" --plcblock --out "d:\export"

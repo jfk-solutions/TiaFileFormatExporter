@@ -6,10 +6,11 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <RollForward>LatestMajor</RollForward>
+    <TiaLicensePath Condition="'$(TiaLicensePath)' == ''">$(MSBuildThisFileDirectory)..\..\licence\tiafileformat.license</TiaLicensePath>
   </PropertyGroup>
 
   <ItemGroup>
-    <None Include="..\..\licence\tiafileformat.license" Link="tiafileformat.license">
+    <None Include="$(TiaLicensePath)" Link="tiafileformat.license">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
   </ItemGroup>
@@ -26,9 +27,14 @@
     <PackageReference Include="zlib.net-mutliplatform" Version="1.1.0" />
   </ItemGroup>
 
-    <ItemGroup>
-        <PackageReference Include="BaseHmiTypes" Version="2026.10.2.1" />
-        <PackageReference Include="jfk-solutions.TiaFileFormat" Version="2026.10.2.1" />
+    <ItemGroup Condition="'$(UseLocalLibraries)' != 'true'">
+        <PackageReference Include="BaseHmiTypes" Version="2026.10.14.1" />
+        <PackageReference Include="jfk-solutions.TiaFileFormat" Version="2026.10.14.2" />
+    </ItemGroup>
+
+    <ItemGroup Condition="'$(UseLocalLibraries)' == 'true'">
+        <ProjectReference Include="..\..\..\BaseHmiTypes\src\BaseHmiTypes\BaseHmiTypes.csproj" />
+        <ProjectReference Include="..\..\..\TiaFileFormat\TiaFileFormat\TiaFileFormat.csproj" />
     </ItemGroup>
 
 </Project>
