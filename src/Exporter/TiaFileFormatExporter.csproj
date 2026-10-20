@@ -6,6 +6,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <RollForward>LatestMajor</RollForward>
+    <UseLocalLibraries Condition="'$(UseLocalLibraries)' == ''">false</UseLocalLibraries>
     <TiaLicensePath Condition="'$(TiaLicensePath)' == ''">$(MSBuildThisFileDirectory)..\..\licence\tiafileformat.license</TiaLicensePath>
   </PropertyGroup>
 
@@ -28,13 +29,13 @@
   </ItemGroup>
 
     <ItemGroup Condition="'$(UseLocalLibraries)' != 'true'">
-        <PackageReference Include="BaseHmiTypes" Version="2026.10.14.2" />
-        <PackageReference Include="jfk-solutions.TiaFileFormat" Version="2026.10.14.3" />
+        <PackageReference Include="BaseHmiTypes" Version="2026.10.16.1" />
+        <PackageReference Include="jfk-solutions.TiaFileFormat" Version="2026.10.20.2" />
     </ItemGroup>
 
     <ItemGroup Condition="'$(UseLocalLibraries)' == 'true'">
         <ProjectReference Include="..\..\..\BaseHmiTypes\src\BaseHmiTypes\BaseHmiTypes.csproj" />
-        <ProjectReference Include="..\..\..\TiaFileFormat\TiaFileFormat\TiaFileFormat.csproj" />
+        <ProjectReference Include="..\..\..\TiaFileFormat\TiaFileFormat\TiaFileFormat.csproj" AdditionalProperties="UseLocalBaseHmiTypes=true" />
     </ItemGroup>
 
 </Project>

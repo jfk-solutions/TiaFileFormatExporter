@@ -30,6 +30,8 @@ public class Program
     static string currentFile;
     public static SemaphoreSlim maxBrowserTasks;
     static BoundedExportQueue? exportQueue;
+    static PriorityExportScheduler? priorityExports;
+    static ExportWorkloadEstimator? workloadEstimator;
     static ConcurrentDictionary<string, DateTime> fileModifiedTimeStamps = new ConcurrentDictionary<string, DateTime>();
     static string fileNameModifiedTimeStamps;
     static Dictionary<string, string> pathReplacements;
@@ -92,6 +94,7 @@ public class Program
         }
 
         parsedOptions = parsedArgs.Value;
+        parsedOptions.ApplyExportDefaults();
 
         if (parsedOptions.MaxParallelism < 0)
             throw new ArgumentOutOfRangeException(nameof(parsedOptions.MaxParallelism),
@@ -153,6 +156,8 @@ public class Program
             runningTasks = 0;
             exportedCount = 0;
             skippedCount = 0;
+            priorityExports = null;
+            workloadEstimator = null;
 
             var sw = new Stopwatch();
             sw.Start();
@@ -178,7 +183,7 @@ public class Program
             hmiProject = new TiaFileFormat.Wrappers.Hmi.TiaHmiProject(database, highLevelObjectConverterWrapper);
 
             await using var queue = parsedOptions.MaxParallelism > 0
-                ? new BoundedExportQueue(parsedOptions.MaxParallelism)
+                ? new BoundedExportQueue(parsedOptions.MaxParallelism.Value)
                 : null;
             exportQueue = queue;
 
@@ -216,6 +221,12 @@ public class Program
                 }
             }
 
+            Console.WriteLine("Exporting selected objects...");
+            if (parsedOptions.All && queue != null && !parsedOptions.Snapshot)
+            {
+                priorityExports = new PriorityExportScheduler();
+                workloadEstimator = new ExportWorkloadEstimator();
+            }
             if (database.RootObject.StoreObjectIds.TryGetValue("Project", out var prj))
             {
                 if (parsedOptions.TiaGitHandlerCompatible)
@@ -228,16 +239,33 @@ public class Program
                 database.RootObject.StoreObjectIds.TryGetValue("Library", out var lb))
                 await WalkProject((StorageBusinessObject)lb.StorageObject, prjNm + "Library");
 
+            if (priorityExports != null)
+            {
+                var scheduled = priorityExports;
+                priorityExports = null;
+                await scheduled.DispatchAsync(queue!);
+            }
             if (queue != null)
                 await queue.CompleteAsync();
             else
                 await Task.WhenAll(exportTasks);
 
+            Console.WriteLine($"Object export took: {sw.Elapsed}.");
+            var metadataTimer = Stopwatch.StartNew();
             var projectExportDir = ReplacePaths(Path.Combine(outDir, prjNm + "Project").FixPath());
             if (parsedOptions.Aml || parsedOptions.All)
+            {
+                Console.WriteLine("Exporting hardware AutomationML...");
                 await ExportProjectData.ExportAml(database, projectExportDir);
+                Console.WriteLine($"AML export took: {metadataTimer.Elapsed}.");
+            }
             if (parsedOptions.Xref || parsedOptions.All)
+            {
+                metadataTimer.Restart();
+                Console.WriteLine("Exporting cross-references...");
                 await ExportProjectData.ExportXref(database, projectExportDir);
+                Console.WriteLine($"XRef export took: {metadataTimer.Elapsed}.");
+            }
 
             sw.Stop();
             Console.WriteLine();
@@ -390,7 +418,7 @@ public class Program
                         }
                     }
                 }
-            });
+            }, workloadEstimator?.Estimate(sb) ?? sb.Header?.StorageObjectLength ?? 0);
         }
     }
 
@@ -419,9 +447,11 @@ public class Program
         });
     }
 
-    private static async ValueTask SubmitExport(Func<Task> work)
+    private static async ValueTask SubmitExport(Func<Task> work, long estimatedCost = 0)
     {
-        if (exportQueue != null)
+        if (priorityExports != null)
+            priorityExports.Add(work, estimatedCost);
+        else if (exportQueue != null)
             await exportQueue.EnqueueAsync(work);
         else
             exportTasks.Add(Task.Run(work));

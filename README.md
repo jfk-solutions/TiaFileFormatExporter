@@ -8,9 +8,10 @@ But you can also use the C# objects directly.
 
 The tool should work on every OS where dotnet is supported.
 
-The default build uses the published NuGet libraries. To test changes in the
-adjacent library checkouts before their next package release, build with
-`dotnet build src/Exporter/TiaFileFormatExporter.csproj -p:UseLocalLibraries=true -p:UseLocalBaseHmiTypes=true`.
+The default build uses the published `TiaFileFormat` and `BaseHmiTypes`
+NuGet packages. Build with
+`dotnet build src/Exporter/TiaFileFormatExporter.csproj`.
+To compile and use the adjacent library checkouts instead, pass `-p:UseLocalLibraries=true`.
 For a full license, supply its path with `-p:TiaLicensePath="C:\path\to\license.license"`;
 the build copies it to the output as `tiafileformat.license` instead of the bundled demo license.
 
@@ -83,9 +84,43 @@ TiaFileFormatExporter.exe "D:\path\Project.ap19" `
 - `--stream-automation-xml` writes PLC XML directly to the destination stream instead of first
   constructing a complete in-memory string.
 
+Individual PLC XML exports include full interface defaults. Deeply nested FB/UDT
+interfaces can therefore produce very large files even with streaming enabled.
+Add `--omit-empty-inherited-type-children` to omit inherited branches without
+instance values or comments. This changes the XML contents; leave it off when
+fully expanded default declarations are required. Combine it with
+`--max-parallelism 2 --no-cache --stream-automation-xml` to limit retained data
+during a bulk PLC export.
+
+`--all` applies these bulk settings automatically: up to two export workers
+(limited by the available processors), no
+converted-object cache, and streaming PLC XML. Full inherited interface
+declarations remain enabled. Explicit `--max-parallelism` values override the worker
+default, including `0` for unbounded execution. All supported object categories,
+the embedded library, hardware AutomationML and cross-references are still
+exported. XML omission switches only apply when explicitly requested.
+Individual export flags keep their existing defaults.
+
+The default worker limit reduces competition between large sequential XML writes
+and bounds the number of expanded interfaces held concurrently. Use
+`--max-parallelism` to tune throughput for other storage and workloads.
+
+With bounded workers, `--all` schedules objects by estimated expanded interface
+size, including repeated type references, so expensive exports start earlier.
+The estimates are cached during traversal and only affect execution order.
+Snapshot exports retain their existing scheduling to preserve image dependencies.
+Full PLC XML also reuses unchanged inherited declarations during serialization;
+this preserves every declaration and the output formatting.
+
+```text
+TiaFileFormatExporter.exe "input.zap18" --all --out "output"
+```
+
+The console reports object, AML and cross-reference stage times separately.
+
 The Options to export are:
 
- - --all - export everything the program supports
+ - --all - export everything the program supports using the bulk settings above
  - --aml - project devices and networks as AutomationML
  - --xref - project cross-references as JSON
  - --plcblock - PLC Blocks (DB, FB, FC, ...)

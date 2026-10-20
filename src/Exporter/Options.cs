@@ -7,7 +7,7 @@ namespace TiaFileFormatExporter
         [Option("lib", HelpText = "Include the library embedded in a project. Standalone AL/ZAL libraries are exported automatically; select object types or use --all.")]
         public bool ExportLib { get; set; }
 
-        [Option("all", HelpText = "Enable All export.")]
+        [Option("all", HelpText = "Export all supported content with bounded workers and streaming XML, preserving full interface defaults.")]
         public bool All { get; set; }
 
         [Option("aml", HelpText = "Export project devices as AutomationML.")]
@@ -61,8 +61,8 @@ namespace TiaFileFormatExporter
         [Option("prioritize-large-objects", HelpText = "Start larger project objects first to reduce the tail of parallel exports. Disabled by default.")]
         public bool PrioritizeLargeObjects { get; set; }
 
-        [Option("max-parallelism", HelpText = "Maximum number of concurrent object exports. Zero keeps the existing unbounded behavior.", Default = 0)]
-        public int MaxParallelism { get; set; }
+        [Option("max-parallelism", HelpText = "Maximum concurrent object exports. Defaults to up to 2 workers with --all, otherwise unbounded. Explicit zero selects unbounded execution.")]
+        public int? MaxParallelism { get; set; }
 
         [Option("no-cache", HelpText = "Disable the high-level converted-object cache to reduce memory consumption. Disabled by default.")]
         public bool DisableConverterCache { get; set; }
@@ -126,5 +126,15 @@ namespace TiaFileFormatExporter
 
         [Option("replacepath", HelpText = "Replacements for path, seperated via |")]
         public IEnumerable<string>? ReplacePath { get; set; }
+
+        public void ApplyExportDefaults()
+        {
+            MaxParallelism ??= All ? Math.Min(2, Environment.ProcessorCount) : 0;
+            if (!All)
+                return;
+
+            DisableConverterCache = true;
+            StreamAutomationXml = true;
+        }
     }
 }

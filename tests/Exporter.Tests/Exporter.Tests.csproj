@@ -10,6 +10,9 @@
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.10.1" />
     <PackageReference Include="MSTest.TestAdapter" Version="4.4.1" />
     <PackageReference Include="MSTest.TestFramework" Version="4.4.1" />
+    <PackageReference Include="CommandLineParser" Version="2.9.1" />
+    <Compile Include="../../src/Exporter/Options.cs" Link="Options.cs" />
     <Compile Include="../../src/Exporter/Classes/BoundedExportQueue.cs" Link="BoundedExportQueue.cs" />
+    <Compile Include="../../src/Exporter/Classes/PriorityExportScheduler.cs" Link="PriorityExportScheduler.cs" />
   </ItemGroup>
 </Project>
