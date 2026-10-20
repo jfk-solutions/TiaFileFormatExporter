@@ -16,6 +16,15 @@ namespace TiaFileFormatExporter
         [Option("xref", HelpText = "Export project cross-references as JSON.")]
         public bool Xref { get; set; }
 
+        [Option("no-aml", HelpText = "Disable AutomationML export, including with --all or --aml.")]
+        public bool DisableAml { get; set; }
+
+        [Option("no-xref", HelpText = "Disable cross-reference export, including with --all or --xref.")]
+        public bool DisableCrossReferences { get; set; }
+
+        public bool ShouldExportAml => !DisableAml && (All || Aml);
+        public bool ShouldExportCrossReferences => !DisableCrossReferences && (All || Xref);
+
         [Option("plcblock", HelpText = "Enable PlcBlock export.")]
         public bool PlcBlock { get; set; }
 

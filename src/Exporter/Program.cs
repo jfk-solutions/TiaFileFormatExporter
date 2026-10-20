@@ -253,13 +253,13 @@ public class Program
             Console.WriteLine($"Object export took: {sw.Elapsed}.");
             var metadataTimer = Stopwatch.StartNew();
             var projectExportDir = ReplacePaths(Path.Combine(outDir, prjNm + "Project").FixPath());
-            if (parsedOptions.Aml || parsedOptions.All)
+            if (parsedOptions.ShouldExportAml)
             {
                 Console.WriteLine("Exporting hardware AutomationML...");
                 await ExportProjectData.ExportAml(database, projectExportDir);
                 Console.WriteLine($"AML export took: {metadataTimer.Elapsed}.");
             }
-            if (parsedOptions.Xref || parsedOptions.All)
+            if (parsedOptions.ShouldExportCrossReferences)
             {
                 metadataTimer.Restart();
                 Console.WriteLine("Exporting cross-references...");

@@ -118,6 +118,16 @@ TiaFileFormatExporter.exe "input.zap18" --all --out "output"
 
 The console reports object, AML and cross-reference stage times separately.
 
+Add `--no-aml` and/or `--no-xref` to disable those exports entirely. These
+exclusions override `--all` and explicit `--aml`/`--xref` selections:
+
+```text
+TiaFileFormatExporter.exe "input.zap18" --all --no-aml --no-xref --out "output"
+```
+
+Also add `--omit-empty-inherited-type-children` when compact PLC XML is desired.
+The metadata exclusions themselves preserve full PLC interface XML.
+
 The Options to export are:
 
  - --all - export everything the program supports using the bulk settings above
